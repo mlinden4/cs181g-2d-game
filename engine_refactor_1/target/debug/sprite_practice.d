@@ -1,1 +1,0 @@
-/Users/maxlinden/Desktop/Tech/Rust/sprite_practice/target/debug/sprite_practice: /Users/maxlinden/Desktop/Tech/Rust/sprite_practice/src/input.rs /Users/maxlinden/Desktop/Tech/Rust/sprite_practice/src/main.rs /Users/maxlinden/Desktop/Tech/Rust/sprite_practice/src/shader.wgsl
