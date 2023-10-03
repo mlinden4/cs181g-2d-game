@@ -12,6 +12,11 @@ mod spriterenderer;
 mod wgpuimpl;
 mod input;
 mod gpuprops;
+mod tile;
+mod units;
+
+use chickenwire::coordinate::cube::Cube;
+use chickenwire::hexgrid::HexGrid;
 
 enum Shape {
     FilledCircle,
@@ -19,8 +24,12 @@ enum Shape {
     OutlinedRectangle
 }
 
+fn createChickenWire() {
+    // let cube_system = Cube::force_from_coords(0, -3, 3);
+    let hex_grid: HexGrid<usize> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
+}
+
 async fn run(event_loop: EventLoop<()>, window: Window) {
-    
     let mut gpu = wgpuimpl::WGPU::new(&window).await;
     let mut sprites = spriterenderer::SpriteRenderer::new(&gpu);
 
