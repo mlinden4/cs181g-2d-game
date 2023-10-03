@@ -15,7 +15,9 @@ mod gpuprops;
 mod tile;
 mod units;
 
+
 use chickenwire::coordinate::cube::Cube;
+use chickenwire::coordinate::*;
 use chickenwire::hexgrid::HexGrid;
 
 enum Shape {
@@ -24,9 +26,9 @@ enum Shape {
     OutlinedRectangle
 }
 
-fn createChickenWire() {
+fn createChickenWire()  -> HexGrid<i32> {
     // let cube_system = Cube::force_from_coords(0, -3, 3);
-    let hex_grid: HexGrid<usize> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
+    HexGrid::new_radial(3, 9)
 }
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
@@ -36,6 +38,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let (texture, tex_image) = load_texture("content/king.png", Some("king image"), &gpu.device, &gpu.queue).expect("Couldn't load king img");
     let tex_image_w = tex_image.width();
     let tex_image_h = tex_image.height();
+
+
+
+    let mut hex_grid = createChickenWire();
+    println!("{}", hex_grid.get(chickenwire::coordinate::MultiChordinate::from((0,0,0)).unwrap()));
+
 
 
     let my_tile = tile::Tile::new(tile::Terrain::Mountain);
@@ -62,8 +70,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     ];
 
     sprites.add_sprite_group(&gpu, texture, my_sprites);
-
-    
 
     let camera = gpuprops::GPUCamera {
         screen_pos: [0.0, 0.0],
