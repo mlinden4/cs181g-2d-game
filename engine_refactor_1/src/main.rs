@@ -42,7 +42,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
 
     let mut hex_grid = createChickenWire();
-    println!("{}", hex_grid.get(chickenwire::coordinate::MultiChordinate::from((0,0,0)).unwrap()));
+    // println!("{}", hex_grid.get(chickenwire::coordinate::MultiChordinate::from((0,0,0)).unwrap()));
 
 
 
@@ -56,6 +56,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // },
         my_tile.get_sprite(),
         GPUSprite {
+            // to_region is the world rect
             to_region: [32.0, 128.0, 64.0, 64.0],
             from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
         },
@@ -76,7 +77,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // Consider using config.width and config.height instead,
         // it's up to you whether you want the window size to change what's visible in the game
         // or scale it up and down
-        screen_size: [1024.0, 768.0],
+        screen_size: [gpu.config.width as f32 / (2.0 as f32), gpu.config.height as f32 / (2.0 as f32)],
     };
     
 
@@ -126,8 +127,25 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     my_sprites[0].to_region[1] -= 4.0;
                 }
 
+                if input.is_mouse_down(winit::event::MouseButton::Left) {
+                    let mouse_pos = input.mouse_pos();
+                    // (2)
+                    // let (mouse_x_norm, mouse_y_norm) = ((mouse_pos.x / gpu.config.width as f64),
+                    //                                     (mouse_pos.y / gpu.config.height as f64));
+
+                    let (mouse_x_norm, mouse_y_norm) = ((mouse_pos.x),
+                                                        (mouse_pos.y));
+
+                    println!("{}, {}", mouse_x_norm, mouse_y_norm);
+
+                    if my_sprites[0].contains(mouse_x_norm as f32, mouse_y_norm as f32) { 
+                        my_sprites[0].from_region = [16.0/32.0, 0.0, 16.0/32.0, 16.0/32.0];
+                    }
+                }
                 
-                
+
+                // window coords -> camera coords -> world coords
+                // raw mouse -> subtract cam size /2 -> subtract cam offset
                 
                 input.next_frame();
                 sprites.set_camera(&gpu, &camera);
