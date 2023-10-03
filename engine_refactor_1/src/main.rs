@@ -37,11 +37,16 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let tex_image_w = tex_image.width();
     let tex_image_h = tex_image.height();
 
+
+    let my_tile = tile::Tile::new(tile::Terrain::Mountain);
+
+
     let mut my_sprites:Vec<GPUSprite> = vec![
-        GPUSprite {
-            to_region: [32.0, 32.0, 64.0, 64.0],
-            from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
-        },
+        // GPUSprite {
+        //     to_region: [32.0, 32.0, 64.0, 64.0],
+        //     from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
+        // },
+        my_tile.get_sprite(),
         GPUSprite {
             to_region: [32.0, 128.0, 64.0, 64.0],
             from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],

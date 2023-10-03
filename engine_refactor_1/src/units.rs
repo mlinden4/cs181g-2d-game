@@ -6,6 +6,7 @@ pub struct Units {
     // armor: usize, ///resistance to hard attack
     defense: usize,
     movement: usize,
+    location: (usize, usize, usize),
     
 } 
 
@@ -22,7 +23,7 @@ impl Units {
             aa_damage: 5,
             defense: 10,
             movement: 2,
-            
+            location: (0,0,0),
         }
     }
 }
