@@ -90,18 +90,21 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             },
             Event::RedrawRequested(_) => {
 
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
-                //     my_sprites[0].to_region[0] -= 4.0;
-                // }
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
-                //     my_sprites[0].to_region[0] += 4.0;
-                // }
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
-                //     my_sprites[0].to_region[1] += 4.0;
-                // }
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
-                //     my_sprites[0].to_region[1] -= 4.0;
-                // }
+                let my_sprites = sprites.get_sprites_mut(0);
+
+
+                if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
+                    my_sprites[0].to_region[0] -= 4.0;
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
+                    my_sprites[0].to_region[0] += 4.0;
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
+                    my_sprites[0].to_region[1] += 4.0;
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
+                    my_sprites[0].to_region[1] -= 4.0;
+                }
 
                 
                 
