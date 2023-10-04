@@ -1,4 +1,5 @@
 use image;
+use tile::Tile;
 use wgpu;
 use winit;
 use bytemuck;
@@ -17,6 +18,7 @@ mod units;
 
 use chickenwire::coordinate::cube::Cube;
 use chickenwire::hexgrid::HexGrid;
+use chickenwire::coordinate;
 
 enum Shape {
     FilledCircle,
@@ -24,9 +26,31 @@ enum Shape {
     OutlinedRectangle
 }
 
-fn createChickenWire() {
+// move this out eventually
+fn create_chicken_wire() {
+
+    let tank = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0)); // make another unit and try to move them 
+    let coastal_tile = tile::Tile::new(tile::Terrain::Coast);
     // let cube_system = Cube::force_from_coords(0, -3, 3);
-    let hex_grid: HexGrid<usize> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
+    // let hex_grid: HexGrid<usize> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
+    let hex_grid_10: HexGrid<tile::Tile> = HexGrid::new_radial(10, coastal_tile);
+    let mult_coord_0 = coordinate::MultiCoord::force_cube(0, 0, 0);
+    let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
+    if hex_grid_10.contains_coord(mult_coord_0) {
+        print!("contains coord 000")
+    }
+    else {
+        print!("doesnt contains coord 000")
+    }
+    if hex_grid_10.contains_coord(mult_coord_10) {
+        print!("contains coord -10 0 10")
+    }
+    else {
+        print!("doesnt contains coord -11 0 11")
+    }
+
+
+
 }
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
@@ -38,7 +62,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let tex_image_h = tex_image.height();
 
 
-    let my_tile = tile::Tile::new(tile::Terrain::Mountain);
+    //let my_tile = tile::Tile::new(tile::Terrain::Mountain);
 
 
     let mut my_sprites:Vec<GPUSprite> = vec![
@@ -46,7 +70,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         //     to_region: [32.0, 32.0, 64.0, 64.0],
         //     from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
         // },
-        my_tile.get_sprite(),
+        //my_tile.get_sprite(),
         GPUSprite {
             to_region: [32.0, 128.0, 64.0, 64.0],
             from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
@@ -253,7 +277,8 @@ fn load_texture(path:impl AsRef<std::path::Path>, label:Option<&str>,
 }
 
 fn main() {
-    let event_loop = EventLoop::new();
+    create_chicken_wire();
+    /*let event_loop = EventLoop::new();
     let window = winit::window::Window::new(&event_loop).unwrap();
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -275,5 +300,5 @@ fn main() {
             })
             .expect("couldn't append canvas to document body");
         wasm_bindgen_futures::spawn_local(run(event_loop, window));
-    }
+    } */
 }

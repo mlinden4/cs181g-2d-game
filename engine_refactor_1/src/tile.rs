@@ -1,7 +1,10 @@
-use crate::units::Units;
+use crate::units::Unit;
+use bytemuck;
+use chickenwire::prelude::HexGrid;
 
 use crate::gpuprops::GPUSprite;
 
+#[derive(Clone, Copy)]
 pub enum Terrain {
     Coast,
     Plain,
@@ -9,11 +12,11 @@ pub enum Terrain {
     Forest
 }
 
-struct TerrainModifier {
-    terrain_type: Terrain,
-    movement: usize,
+pub struct TerrainModifier {
+    pub terrain_type: Terrain,
+    pub movement: usize,
     // attack: usize,
-    defense: usize,
+    pub defense: usize,
 }
 
 // impl TerrainModifier {
@@ -22,11 +25,14 @@ struct TerrainModifier {
 //     } 
 // }
 
+
+#[derive(Clone, Copy)]
 pub struct Tile {
     terrain: Terrain,
-    units: Vec<Units>,
+    occupied: bool,
+    // units: Vec<Unit>, // create a vec of units, keep track of what tile a unit is on
     // buildings: Vec<Buildings>,
-    sprite: GPUSprite,      // Could be a vec of GPU sprites all to render overlapped at a location
+    // sprite: GPUSprite,    Render elsewhere  // Could be a vec of GPU sprites all to render overlapped at a location
 }
 
 impl Tile {
@@ -49,17 +55,26 @@ impl Tile {
 
         Self {
             terrain,
-            units: Vec::default(),
-            sprite: GPUSprite { 
-                to_region: [32.0, 32.0, 64.0, 64.0],
-                from_region: [x_idx*x_width, y_idx*y_width, x_width, y_width],
-            },
+            occupied: false,
         }
 
     }
 
-
-    pub fn get_sprite(&self) -> GPUSprite {
-        self.sprite
+    pub fn set_occupied(&mut self) {
+        self.occupied = true
     }
+
+    pub fn set_empty(&mut self) {
+        self.occupied = false
+    }
+
+
+    pub fn is_occupied(&self) -> bool {
+        self.occupied
+    }
+
+} 
+
+pub fn set_grid_plain (grid: &mut HexGrid<Tile>) {
+
 }
