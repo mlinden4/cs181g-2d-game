@@ -65,7 +65,7 @@ fn create_chicken_wire() -> HexGrid<tile::Tile> {
 
 }
 
-fn convert_hexgrid_to_sprites(gpu:&wgpuimpl::WGPU, hexgrid:HexGrid<tile::Tile>) -> Vec<GPUSprite> {
+fn convert_hexgrid_to_sprites(gpu:&wgpuimpl::WGPU, hexgrid:&HexGrid<tile::Tile>) -> Vec<GPUSprite> {
 
     let from_x = 1.0/7.0;
     let from_y = 0.0;
@@ -123,6 +123,16 @@ fn hex_idx_to_xy(gpu:&wgpuimpl::WGPU, full_size:f32, q:f32, r:f32, s:f32) -> (f3
     (x, y)
 }
 
+// fn xy_to_hex(gpu:&wgpuimpl::WGPU, full_size:f32, x:f32, y:f32) -> (i32, i32, i32) {
+
+//     let size:f32 = full_size / 2.0 as f32; //32 px
+
+//     let q:i32 = ()
+//     let r:i32
+//     let s:i32 = -q - r
+
+// }
+
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut gpu = wgpuimpl::WGPU::new(&window).await;
     let mut sprites = spriterenderer::SpriteRenderer::new(&gpu);
@@ -140,7 +150,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let from_height = 1.0;
 
 
-    let mut my_sprites = convert_hexgrid_to_sprites(&gpu, hexgrid);
+    let mut my_sprites = convert_hexgrid_to_sprites(&gpu, &hexgrid);
 
     // let mut my_sprites:Vec<GPUSprite> = vec![
     //     GPUSprite {
@@ -205,42 +215,45 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 window.request_redraw();
             },
             Event::RedrawRequested(_) => {
+                println!("BALLS");
 
-                if input.is_mouse_pressed(winit::event::MouseButton::Left) {
-                    // TODO screen -> multicord needed
-                    let placeholder_coord = MultiCoord::default();
+                // let placeholder_coord = MultiCoord::default();
 
-                    if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
-                        global_tile = Tile::new(tile::Terrain::Plain)
-                    }
-                    if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
-                        global_tile = Tile::new(tile::Terrain::Mountain)
-                    }
-                    if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
-                        global_tile = Tile::new(tile::Terrain::Coast)
-                    }
-                    if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
-                        global_tile = Tile::new(tile::Terrain::Forest)
-                    }
+                
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
+                //     global_tile = Tile::new(tile::Terrain::Plain);
+                //     println!("{}", "PLAINS");
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
+                //     global_tile = Tile::new(tile::Terrain::Mountain);
+                //     println!("{}", "MOUNTAIN");
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
+                //     global_tile = Tile::new(tile::Terrain::Coast);
+                //     println!("{}", "COAST");
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
+                //     global_tile = Tile::new(tile::Terrain::Forest);
+                //     println!("{}", "FOREST");
+                // }
 
-                    hexgrid.update(placeholder_coord, global_tile.clone()).unwrap();
-                }
+                // hexgrid.update(placeholder_coord, global_tile.clone()).unwrap();
 
-                let my_sprites = sprites.get_sprites_mut(0);
+                // let my_sprites = sprites.get_sprites_mut(0);
 
 
-                if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
-                    my_sprites[0].to_region[0] -= 4.0;
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
-                    my_sprites[0].to_region[0] += 4.0;
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
-                    my_sprites[0].to_region[1] += 4.0;
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
-                    my_sprites[0].to_region[1] -= 4.0;
-                }
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
+                //     my_sprites[0].to_region[0] -= 4.0;
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
+                //     my_sprites[0].to_region[0] += 4.0;
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
+                //     my_sprites[0].to_region[1] += 4.0;
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
+                //     my_sprites[0].to_region[1] -= 4.0;
+                // }
 
                 
                 
@@ -249,7 +262,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 sprites.set_camera(&gpu, &camera);
                 let length = sprites.get_sprites(0).len();
                 sprites.refresh_sprites(&gpu, 0, 0..length);
- 
 
                 // ... All the 3d drawing code/render pipeline/queue/frame stuff goes here ...
                 let frame = gpu.surface
@@ -307,6 +319,22 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 },
                 ..
             } => {
+                if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
+                    global_tile = Tile::new(tile::Terrain::Plain);
+                    println!("{}", "PLAINS");
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
+                    global_tile = Tile::new(tile::Terrain::Mountain);
+                    println!("{}", "MOUNTAIN");
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
+                    global_tile = Tile::new(tile::Terrain::Coast);
+                    println!("{}", "COAST");
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
+                    global_tile = Tile::new(tile::Terrain::Forest);
+                    println!("{}", "FOREST");
+                }
                 input.handle_key_event(key_ev);
             },
             Event::WindowEvent {
@@ -314,6 +342,14 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 ..
             } => {
                 input.handle_mouse_button(state, button);
+
+                if input.is_mouse_down(winit::event::MouseButton::Left) {
+                    // TODO screen -> multicord needed
+                    let mouse_pos = input.mouse_pos();
+                    // Normalize mouse clicks to be 00 at bottom left corner
+                    let (x_norm, y_norm) = (mouse_pos.x as f32, (((mouse_pos.y as f32) - (gpu.config.height as f32))*(-1 as f32)));
+                    println!("{}, {}", x_norm, y_norm);
+                }
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
