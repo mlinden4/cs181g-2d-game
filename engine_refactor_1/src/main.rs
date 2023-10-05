@@ -123,15 +123,34 @@ fn hex_idx_to_xy(gpu:&wgpuimpl::WGPU, full_size:f32, q:f32, r:f32, s:f32) -> (f3
     (x, y)
 }
 
-// fn xy_to_hex(gpu:&wgpuimpl::WGPU, full_size:f32, x:f32, y:f32) -> (i32, i32, i32) {
+fn xy_to_hex(gpu:&wgpuimpl::WGPU, full_size:f32, x:f32, y:f32) -> (i32, i32, i32) {
 
-//     let size:f32 = full_size / 2.0 as f32; //32 px
+    let size:f32 = full_size / 2.0 as f32; //32 px
 
-//     let q:i32 = ()
-//     let r:i32
-//     let s:i32 = -q - r
+    let corrected_x = x - (gpu.config.width as f32 / 2.0 as f32);
+    let corrected_y = y - (gpu.config.height as f32 / 2.0 as f32);
 
-// }
+    let q:f32 = ((2.0 as f32 / 3.0 as f32) * corrected_x) / size;
+    let r:f32 = ((((-1.0 as f32 / 3.0 as f32) * corrected_x) + ((3.0_f32.sqrt() / 3.0 as f32) * corrected_y))) / size;
+    let s:f32 = -q - r;
+
+    let  (mut q_int, mut r_int, mut s_int) = (q as i32, r as i32, s as i32);
+
+    let q_diff = (q_int as f32 - q).abs();
+    let r_diff = (r_int as f32 - r).abs();
+    let s_diff = (s_int as f32 - s).abs();
+
+    if q_diff > r_diff && q_diff > s_diff {
+        q_int = -r_int-s_int;
+    }else if r_diff > s_diff {
+        r_int = -q_int-s_int;
+    } else {
+        s_int = -q_int-r_int;
+    }
+       
+    (q_int,r_int,s_int)
+
+}
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut gpu = wgpuimpl::WGPU::new(&window).await;
@@ -193,7 +212,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut input = input::Input::default();
 
     let mut global_tile = Tile::new(tile::Terrain::Plain);
-    println!("{}",  matches!(global_tile.terrain, tile::Terrain::Plain));
+    println!("*******{}",  matches!(global_tile.terrain, tile::Terrain::Plain));
 
 
     event_loop.run(move |event, _, control_flow| {
@@ -237,7 +256,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 //     println!("{}", "FOREST");
                 // }
 
-                // hexgrid.update(placeholder_coord, global_tile.clone()).unwrap();
 
                 // let my_sprites = sprites.get_sprites_mut(0);
 
@@ -255,7 +273,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 //     my_sprites[0].to_region[1] -= 4.0;
                 // }
 
-                
+                // let mut the_sprites = sprites.get_sprites_mut(0);
+                // the_sprites = convert_hexgrid_to_sprites(&gpu, &hexgrid); //JANK, to fix later on with something more
                 
                 
                 input.next_frame();
@@ -349,6 +368,15 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     // Normalize mouse clicks to be 00 at bottom left corner
                     let (x_norm, y_norm) = (mouse_pos.x as f32, (((mouse_pos.y as f32) - (gpu.config.height as f32))*(-1 as f32)));
                     println!("{}, {}", x_norm, y_norm);
+
+                    let (q, r, s) = xy_to_hex(&gpu, 32.0 as f32, x_norm, y_norm);
+                    println!("{}, {}, {}", q, r, s);
+
+                    hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
+
+                    sprites.set_sprite_group(0, convert_hexgrid_to_sprites(&gpu, &hexgrid));
+
+                    window.request_redraw();
                 }
             }
             Event::WindowEvent {
