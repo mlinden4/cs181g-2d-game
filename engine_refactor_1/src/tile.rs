@@ -28,8 +28,8 @@ pub struct TerrainModifier {
 
 #[derive(Clone, Copy)]
 pub struct Tile {
-    terrain: Terrain,
-    occupied: bool,
+    pub terrain: Terrain,
+    pub occupied: bool,
     // units: Vec<Unit>, // create a vec of units, keep track of what tile a unit is on
     // buildings: Vec<Buildings>,
     // sprite: GPUSprite,    Render elsewhere  // Could be a vec of GPU sprites all to render overlapped at a location

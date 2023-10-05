@@ -27,13 +27,14 @@ enum Shape {
 }
 
 // move this out eventually
-fn create_chicken_wire() {
+fn create_chicken_wire() -> HexGrid<tile::Tile> {
 
     let tank = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0)); // make another unit and try to move them 
     let coastal_tile = tile::Tile::new(tile::Terrain::Coast);
+    let plain_tile = tile::Tile::new(tile::Terrain::Plain);
     // let cube_system = Cube::force_from_coords(0, -3, 3);
     // let hex_grid: HexGrid<usize> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
-    let hex_grid_10: HexGrid<tile::Tile> = HexGrid::new_radial(10, coastal_tile);
+    let mut hex_grid_10: HexGrid<tile::Tile> = HexGrid::new_radial(10, coastal_tile);
     let mult_coord_0 = coordinate::MultiCoord::force_cube(0, 0, 0);
     let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
     if hex_grid_10.contains_coord(mult_coord_0) {
@@ -49,20 +50,37 @@ fn create_chicken_wire() {
         print!("doesnt contains coord -11 0 11")
     }
 
+    let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
+    let tile_10 = hex_grid_10.get(mult_coord_10);
+    println!("{}",  matches!(tile_10.unwrap().terrain, tile::Terrain::Coast));
 
+    let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
+    hex_grid_10.update(mult_coord_10, plain_tile);
+    let tile_10 = hex_grid_10.get(mult_coord_10);
+    println!("{}",  matches!(tile_10.unwrap().terrain, tile::Terrain::Plain));
+    println!("{}",  matches!(tile_10.unwrap().terrain, tile::Terrain::Coast));
+
+    hex_grid_10
 
 }
+
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut gpu = wgpuimpl::WGPU::new(&window).await;
     let mut sprites = spriterenderer::SpriteRenderer::new(&gpu);
 
-    let (texture, tex_image) = load_texture("content/king.png", Some("king image"), &gpu.device, &gpu.queue).expect("Couldn't load king img");
+    let (texture, tex_image) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
     let tex_image_w = tex_image.width();
     let tex_image_h = tex_image.height();
 
 
-    //let my_tile = tile::Tile::new(tile::Terrain::Mountain);
+    let mut hexgrid = create_chicken_wire();
+
+
+    let from_x = 1.0/7.0;
+    let from_y = 0.0;
+    let from_width = 1.0/7.0; //448 x 64
+    let from_height = 1.0;
 
 
     let mut my_sprites:Vec<GPUSprite> = vec![
@@ -70,18 +88,35 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         //     to_region: [32.0, 32.0, 64.0, 64.0],
         //     from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
         // },
-        //my_tile.get_sprite(),
+        // //my_tile.get_sprite(),
+        // GPUSprite {
+        //     to_region: [32.0, 128.0, 64.0, 64.0],
+        //     from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
+        // },
+        // GPUSprite {
+        //     to_region: [128.0, 32.0, 64.0, 64.0],
+        //     from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
+        // },
+        // GPUSprite {
+        //     to_region: [128.0, 128.0, 64.0, 64.0],
+        //     from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
+        // },
+
         GPUSprite {
-            to_region: [32.0, 128.0, 64.0, 64.0],
-            from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
+            to_region: [0.0, 0.0, 128.0, 128.0],
+            from_region: [0.0*from_x, 0.0, from_width, from_height],
         },
         GPUSprite {
-            to_region: [128.0, 32.0, 64.0, 64.0],
-            from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
+            to_region: [128.0, 0.0, 128.0, 128.0],
+            from_region: [3.0*from_x, 0.0, from_width, from_height],
         },
         GPUSprite {
-            to_region: [128.0, 128.0, 64.0, 64.0],
-            from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
+            to_region: [0.0, 128.0, 128.0, 128.0],
+            from_region: [4.0*from_x, 0.0, from_width, from_height],
+        },
+        GPUSprite {
+            to_region: [128.0, 128.0, 128.0, 128.0],
+            from_region: [5.0*from_x, 0.0, from_width, from_height],
         },
     ];
 
@@ -277,8 +312,8 @@ fn load_texture(path:impl AsRef<std::path::Path>, label:Option<&str>,
 }
 
 fn main() {
-    create_chicken_wire();
-    /*let event_loop = EventLoop::new();
+    // create_chicken_wire();
+    let event_loop = EventLoop::new();
     let window = winit::window::Window::new(&event_loop).unwrap();
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -300,5 +335,5 @@ fn main() {
             })
             .expect("couldn't append canvas to document body");
         wasm_bindgen_futures::spawn_local(run(event_loop, window));
-    } */
+    }
 }
