@@ -2,6 +2,8 @@ use crate::units::Unit;
 use bytemuck;
 use chickenwire::prelude::HexGrid;
 
+use winit::event::VirtualKeyCode;
+
 use crate::gpuprops::GPUSprite;
 
 #[derive(Clone, Copy)]
@@ -39,6 +41,7 @@ impl Tile {
 
     pub fn new(terrain:Terrain) -> Self {
 
+        let mut occupied = false;
 
         let mut x_idx = 0.0 as f32;
         let mut y_idx = 0.0 as f32;
@@ -48,14 +51,14 @@ impl Tile {
         match terrain {   // Decide which sprite to use
             Terrain::Coast =>       {(x_idx, y_idx) = (0.0, 0.0)},
             Terrain::Plain =>       {(x_idx, y_idx) = (0.0, 1.0)},
-            Terrain::Mountain =>    {(x_idx, y_idx) = (1.0, 0.0)},
+            Terrain::Mountain =>    {(occupied, x_idx, y_idx) = (true, 1.0, 0.0)},
             Terrain::Forest =>      {(x_idx, y_idx) = (1.0, 1.0)},
             _ => ()
         }
 
         Self {
             terrain,
-            occupied: false,
+            occupied: occupied,
         }
 
     }

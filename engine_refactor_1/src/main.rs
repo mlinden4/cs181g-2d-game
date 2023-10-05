@@ -16,7 +16,7 @@ mod gpuprops;
 mod tile;
 mod units;
 
-use chickenwire::coordinate::cube::Cube;
+use chickenwire::{coordinate::cube::Cube, prelude::MultiCoord};
 use chickenwire::hexgrid::HexGrid;
 use chickenwire::coordinate;
 
@@ -141,6 +141,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let mut input = input::Input::default();
 
+    let mut global_tile = Tile::new(tile::Terrain::Plain);
+    println!("{}",  matches!(global_tile.terrain, tile::Terrain::Plain));
 
 
     event_loop.run(move |event, _, control_flow| {
@@ -162,6 +164,26 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 window.request_redraw();
             },
             Event::RedrawRequested(_) => {
+
+                if input.is_mouse_pressed(winit::event::MouseButton::Left) {
+                    // TODO screen -> multicord needed
+                    let placeholder_coord = MultiCoord::default();
+
+                    if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
+                        global_tile = Tile::new(tile::Terrain::Plain)
+                    }
+                    if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
+                        global_tile = Tile::new(tile::Terrain::Mountain)
+                    }
+                    if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
+                        global_tile = Tile::new(tile::Terrain::Coast)
+                    }
+                    if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
+                        global_tile = Tile::new(tile::Terrain::Forest)
+                    }
+
+                    hexgrid.update(placeholder_coord, global_tile.clone()).unwrap();
+                }
 
                 let my_sprites = sprites.get_sprites_mut(0);
 
