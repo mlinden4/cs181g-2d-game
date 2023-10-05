@@ -1,5 +1,6 @@
 use image;
 use tile::Tile;
+use units::Unit;
 use wgpu;
 use winit;
 use bytemuck;
@@ -24,6 +25,12 @@ enum Shape {
     FilledCircle,
     FilledRectangle,
     OutlinedRectangle
+}
+
+fn create_unit_grid() -> HexGrid<Unit> {
+    let unit_grid: HexGrid<Unit> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
+
+    unit_grid
 }
 
 // move this out eventually
@@ -75,6 +82,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
 
     let mut hexgrid = create_chicken_wire();
+    let mut unitgrid = create_unit_grid();
 
 
     let from_x = 1.0/7.0;
@@ -142,6 +150,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut input = input::Input::default();
 
     let mut global_tile = Tile::new(tile::Terrain::Plain);
+    let tank = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0));
     println!("{}",  matches!(global_tile.terrain, tile::Terrain::Plain));
 
 
@@ -180,6 +189,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     }
                     if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
                         global_tile = Tile::new(tile::Terrain::Forest)
+                    }
+                    if input.is_key_down(winit::event::VirtualKeyCode::Key5) {
+                        // MOVE TANK
+                        // grab origin multicoord from above
+                        // unit_hex_grid.get.unwrap.isok
+                        let clicked_unit = unitgrid.remove(placeholder_coord).unwrap();
+                        if input.is_mouse_pressed(winit::event::MouseButton::Left) {
+                            // get new coord
+                            let dest_coord = MultiCoord::default();
+                            clicked_unit.move_unit(dest_coord, &mut hexgrid,  &mut unitgrid)
+                        }
+                        
                     }
 
                     hexgrid.update(placeholder_coord, global_tile.clone()).unwrap();

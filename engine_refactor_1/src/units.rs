@@ -1,5 +1,6 @@
 use std::ops::Deref;
 
+use crate::tile;
 use crate::tile::TerrainModifier;
 use crate::tile::Terrain;
 use crate::tile::Tile;
@@ -101,9 +102,10 @@ impl Unit {
         }
     }
 
-    pub fn inrange(&self, destination: coordinate::MultiCoord, grid: &HexGrid<Tile>) -> bool {
-        let is_occupied = grid.get(destination).unwrap().is_occupied();
-        if !is_occupied {
+    pub fn inrange(&self, destination: coordinate::MultiCoord, tile_grid: &HexGrid<Tile>, unit_grid: &HexGrid<Unit>) -> bool {
+        let is_occupied = unit_grid.contains_coord(destination);
+        let is_mountain = tile_grid.get(destination).unwrap().is_mountain();
+        if !is_occupied && !is_mountain{
             let origin_cube =self.location.to_cube().unwrap();
             let dest_cube = destination.to_cube().unwrap();
             let dist = origin_cube.dist(dest_cube);
@@ -119,11 +121,11 @@ impl Unit {
         // is distance to dest and compare with movement
     }
 
-    pub fn move_unit(&mut self, destination: coordinate::MultiCoord, grid: &mut HexGrid<Tile>) {
-        if self.inrange(destination, grid) {
-            grid.get_mut(self.location).unwrap().set_empty(); // set original tile as empty
-            grid.get_mut(destination).unwrap().set_occupied(); // set new tile to occupied
-            self.location = destination
+    pub fn move_unit(mut self, destination: coordinate::MultiCoord, tile_grid: &mut HexGrid<Tile>, unit_grid: &mut HexGrid<Unit>) {
+        if self.inrange(destination, tile_grid, unit_grid) {
+            // let cur_unit = unit_grid.remove(self.location).unwrap();
+            self.location = destination;
+            let _ = unit_grid.add(destination, self);
         }
     }
 
