@@ -53,7 +53,7 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32,
     return VertexOutput(
         // Offset corner by size * which_vtx to get the right corner, then do camera stuff. Dividing screen size by 2 and the last subtraction are to deal with the NDC coordinate space, which goes from -1 to 1 in WGPU.
         // ((corner + vec4(which_vtx*size,0.,0.) - vec4(camera.screen_pos,0.,0.)) / vec4(camera.screen_size/2., 1.0, 1.0)) - vec4(1.0, 1.0, 0.0, 0.0),
-        (corner + vec4(which_vtx*size,0.,0.) - vec4(camera.screen_pos,0.,0.)) / vec4(camera.screen_size.x, camera.screen_size.y, 1.0, 1.0),
+        ((corner + vec4(which_vtx*size,0.,0.) - vec4(camera.screen_pos,0.,0.)) / vec4(camera.screen_size/2., 1.0, 1.0)) - vec4(1.0, 1.0, 0.0, 0.0),
         // Offset texture corner by tex_size * which_uv to get the right corner
         tex_corner + which_uv*tex_size
     );

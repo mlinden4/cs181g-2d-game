@@ -32,9 +32,10 @@ fn create_chicken_wire() -> HexGrid<tile::Tile> {
     let tank = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0)); // make another unit and try to move them 
     let coastal_tile = tile::Tile::new(tile::Terrain::Coast);
     let plain_tile = tile::Tile::new(tile::Terrain::Plain);
+    let mountain_tile = tile::Tile::new(tile::Terrain::Mountain);
     // let cube_system = Cube::force_from_coords(0, -3, 3);
     // let hex_grid: HexGrid<usize> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
-    let mut hex_grid_10: HexGrid<tile::Tile> = HexGrid::new_radial(10, coastal_tile);
+    let mut hex_grid_10: HexGrid<tile::Tile> = HexGrid::new_radial(10, mountain_tile);
     let mult_coord_0 = coordinate::MultiCoord::force_cube(0, 0, 0);
     let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
     if hex_grid_10.contains_coord(mult_coord_0) {
@@ -64,6 +65,63 @@ fn create_chicken_wire() -> HexGrid<tile::Tile> {
 
 }
 
+fn convert_hexgrid_to_sprites(gpu:&wgpuimpl::WGPU, hexgrid:HexGrid<tile::Tile>) -> Vec<GPUSprite> {
+
+    let from_x = 1.0/7.0;
+    let from_y = 0.0;
+    let from_width = 1.0/7.0; //448 x 64
+    let from_height = 1.0;
+
+    let size:f32 = 32.0;
+
+    let mut output_sprites:Vec<GPUSprite> = vec![];
+
+    for q in -10..=10 {
+        for r in -10..=10 {
+            for s in -10..=10 {
+                if q + r + s == 0 {
+
+                    let hex = hexgrid.get(coordinate::MultiCoord::force_cube(q, r, s)).unwrap();
+
+                    let mut sprite_idx = 0.0;
+                    match hex.terrain {
+                        tile::Terrain::Coast => { sprite_idx = 3.0 }
+                        tile::Terrain::Plain => { sprite_idx = 4.0 }
+                        tile::Terrain::Mountain => { sprite_idx = 0.0 }
+                        tile::Terrain::Forest => { sprite_idx = 2.0 }
+                        // _ => ();
+                    }
+
+                    let (world_x_pos, world_y_pos) = hex_idx_to_xy(gpu, size, q as f32,r as f32,s as f32);
+
+                    output_sprites.push(
+                        GPUSprite {
+                            to_region: [world_x_pos, world_y_pos, size, size],
+                            from_region: [sprite_idx*from_x, from_y, from_width, from_height],
+                        }
+                    )
+
+                }
+            }
+        }
+    }
+
+    output_sprites
+
+}
+
+fn hex_idx_to_xy(gpu:&wgpuimpl::WGPU, full_size:f32, q:f32, r:f32, s:f32) -> (f32, f32) {
+
+    let size:f32 = full_size / 2.0 as f32; //32 px
+
+    //64 wide, 56 tall
+
+    let x:f32 = (size * ((3.0/2.0) * q)) + gpu.config.width as f32 / 2.0 as f32;
+    let y:f32 = (size * (3.0_f32.sqrt()/2.0 * q + 3.0_f32.sqrt() * r)) + gpu.config.height as f32 / 2.0 as f32;
+    
+
+    (x, y)
+}
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut gpu = wgpuimpl::WGPU::new(&window).await;
@@ -72,7 +130,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let (texture, tex_image) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
     let tex_image_w = tex_image.width();
     let tex_image_h = tex_image.height();
-
 
     let mut hexgrid = create_chicken_wire();
 
@@ -83,42 +140,26 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let from_height = 1.0;
 
 
-    let mut my_sprites:Vec<GPUSprite> = vec![
-        // GPUSprite {
-        //     to_region: [32.0, 32.0, 64.0, 64.0],
-        //     from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
-        // },
-        // //my_tile.get_sprite(),
-        // GPUSprite {
-        //     to_region: [32.0, 128.0, 64.0, 64.0],
-        //     from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
-        // },
-        // GPUSprite {
-        //     to_region: [128.0, 32.0, 64.0, 64.0],
-        //     from_region: [0.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
-        // },
-        // GPUSprite {
-        //     to_region: [128.0, 128.0, 64.0, 64.0],
-        //     from_region: [16.0/32.0, 16.0/32.0, 16.0/32.0, 16.0/32.0],
-        // },
+    let mut my_sprites = convert_hexgrid_to_sprites(&gpu, hexgrid);
 
-        GPUSprite {
-            to_region: [0.0, 0.0, 128.0, 128.0],
-            from_region: [0.0*from_x, 0.0, from_width, from_height],
-        },
-        GPUSprite {
-            to_region: [128.0, 0.0, 128.0, 128.0],
-            from_region: [3.0*from_x, 0.0, from_width, from_height],
-        },
-        GPUSprite {
-            to_region: [0.0, 128.0, 128.0, 128.0],
-            from_region: [4.0*from_x, 0.0, from_width, from_height],
-        },
-        GPUSprite {
-            to_region: [128.0, 128.0, 128.0, 128.0],
-            from_region: [5.0*from_x, 0.0, from_width, from_height],
-        },
-    ];
+    // let mut my_sprites:Vec<GPUSprite> = vec![
+    //     GPUSprite {
+    //         to_region: [0.0, 0.0, 128.0, 128.0],
+    //         from_region: [0.0*from_x, 0.0, from_width, from_height],
+    //     },
+    //     GPUSprite {
+    //         to_region: [128.0, 0.0, 128.0, 128.0],
+    //         from_region: [3.0*from_x, 0.0, from_width, from_height],
+    //     },
+    //     GPUSprite {
+    //         to_region: [0.0, 128.0, 128.0, 128.0],
+    //         from_region: [4.0*from_x, 0.0, from_width, from_height],
+    //     },
+    //     GPUSprite {
+    //         to_region: [128.0, 128.0, 128.0, 128.0],
+    //         from_region: [5.0*from_x, 0.0, from_width, from_height],
+    //     },
+    // ];
 
     sprites.add_sprite_group(&gpu, texture, my_sprites);
 
@@ -129,7 +170,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // Consider using config.width and config.height instead,
         // it's up to you whether you want the window size to change what's visible in the game
         // or scale it up and down
-        screen_size: [1024.0, 768.0],
+        screen_size: [gpu.config.width as f32, gpu.config.height as f32],
     };
     
 
