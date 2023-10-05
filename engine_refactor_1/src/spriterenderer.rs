@@ -208,6 +208,10 @@ impl SpriteRenderer {
         self.groups.len() -1
     }
 
+    pub fn set_sprite_group(&mut self, which:usize, new_sprites:Vec<GPUSprite>) {
+        self.groups[which].sprites = new_sprites;
+    }
+
     pub fn set_camera(&mut self, gpu:&WGPU, camera:&GPUCamera) {
         gpu.queue.write_buffer(&self.buffer_camera, 0, bytemuck::bytes_of(camera));
     }
