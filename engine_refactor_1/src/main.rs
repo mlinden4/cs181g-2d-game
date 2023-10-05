@@ -22,44 +22,25 @@ use chickenwire::coordinate;
 
 enum Shape {
     FilledCircle,
-    FilledRectangle,
     OutlinedRectangle
 }
+
+const hexgrid_radius:i32 = 10;
 
 // move this out eventually
 fn create_chicken_wire() -> HexGrid<tile::Tile> {
 
-    let tank = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0)); // make another unit and try to move them 
+    // let tank = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0)); // make another unit and try to move them 
+    
+    
     let coastal_tile = tile::Tile::new(tile::Terrain::Coast);
     let plain_tile = tile::Tile::new(tile::Terrain::Plain);
     let mountain_tile = tile::Tile::new(tile::Terrain::Mountain);
-    // let cube_system = Cube::force_from_coords(0, -3, 3);
-    // let hex_grid: HexGrid<usize> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
-    let mut hex_grid_10: HexGrid<tile::Tile> = HexGrid::new_radial(10, mountain_tile);
-    let mult_coord_0 = coordinate::MultiCoord::force_cube(0, 0, 0);
-    let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
-    if hex_grid_10.contains_coord(mult_coord_0) {
-        print!("contains coord 000")
-    }
-    else {
-        print!("doesnt contains coord 000")
-    }
-    if hex_grid_10.contains_coord(mult_coord_10) {
-        print!("contains coord -10 0 10")
-    }
-    else {
-        print!("doesnt contains coord -11 0 11")
-    }
 
-    let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
-    let tile_10 = hex_grid_10.get(mult_coord_10);
-    println!("{}",  matches!(tile_10.unwrap().terrain, tile::Terrain::Coast));
 
-    let mult_coord_10 = coordinate::MultiCoord::force_cube(-10, 0, 10);
-    hex_grid_10.update(mult_coord_10, plain_tile);
-    let tile_10 = hex_grid_10.get(mult_coord_10);
-    println!("{}",  matches!(tile_10.unwrap().terrain, tile::Terrain::Plain));
-    println!("{}",  matches!(tile_10.unwrap().terrain, tile::Terrain::Coast));
+    let mut hex_grid_10: HexGrid<tile::Tile> = HexGrid::new_radial(hexgrid_radius as u32, coastal_tile);
+
+
 
     hex_grid_10
 
@@ -76,9 +57,9 @@ fn convert_hexgrid_to_sprites(gpu:&wgpuimpl::WGPU, hexgrid:&HexGrid<tile::Tile>)
 
     let mut output_sprites:Vec<GPUSprite> = vec![];
 
-    for q in -10..=10 {
-        for r in -10..=10 {
-            for s in -10..=10 {
+    for q in -hexgrid_radius..=hexgrid_radius {
+        for r in -hexgrid_radius..=hexgrid_radius {
+            for s in -hexgrid_radius..=hexgrid_radius {
                 if q + r + s == 0 {
 
                     let hex = hexgrid.get(coordinate::MultiCoord::force_cube(q, r, s)).unwrap();
@@ -123,6 +104,11 @@ fn hex_idx_to_xy(gpu:&wgpuimpl::WGPU, full_size:f32, q:f32, r:f32, s:f32) -> (f3
     (x, y)
 }
 
+
+fn abs(x: i32) -> i32 {
+    x.abs()
+}
+
 fn xy_to_hex(gpu:&wgpuimpl::WGPU, full_size:f32, x:f32, y:f32) -> (i32, i32, i32) {
 
     let size:f32 = full_size / 2.0 as f32; //32 px
@@ -134,11 +120,28 @@ fn xy_to_hex(gpu:&wgpuimpl::WGPU, full_size:f32, x:f32, y:f32) -> (i32, i32, i32
     let r:f32 = ((((-1.0 as f32 / 3.0 as f32) * corrected_x) + ((3.0_f32.sqrt() / 3.0 as f32) * corrected_y))) / size;
     let s:f32 = -q - r;
 
-    let  (mut q_int, mut r_int, mut s_int) = (q as i32, r as i32, s as i32);
+    // let  (mut q_int, mut r_int, mut s_int) = (q as i32, r as i32, s as i32);
 
-    let q_diff = (q_int as f32 - q).abs();
-    let r_diff = (r_int as f32 - r).abs();
-    let s_diff = (s_int as f32 - s).abs();
+    // let q_diff = (q_int as f32 - q).abs();
+    // let r_diff = (r_int as f32 - r).abs();
+    // let s_diff = (s_int as f32 - s).abs();
+
+    // if q_diff > r_diff && q_diff > s_diff {
+    //     q_int = -r_int-s_int;
+    // }else if r_diff > s_diff {
+    //     r_int = -q_int-s_int;
+    // } else {
+    //     s_int = -q_int-r_int;
+    // }
+       
+    
+    let mut q_int = q.round() as i32;
+    let mut r_int = r.round() as i32;
+    let mut s_int = s.round() as i32;
+
+    let q_diff = abs(q_int - q.round() as i32);
+    let r_diff = abs(r_int - r.round() as i32);
+    let s_diff = abs(s_int - s.round() as i32);
 
     if q_diff > r_diff && q_diff > s_diff {
         q_int = -r_int-s_int;
@@ -147,9 +150,8 @@ fn xy_to_hex(gpu:&wgpuimpl::WGPU, full_size:f32, x:f32, y:f32) -> (i32, i32, i32
     } else {
         s_int = -q_int-r_int;
     }
-       
-    (q_int,r_int,s_int)
 
+    (q_int,r_int,s_int)
 }
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
@@ -234,8 +236,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 window.request_redraw();
             },
             Event::RedrawRequested(_) => {
-                println!("BALLS");
+               
 
+
+                
                 // let placeholder_coord = MultiCoord::default();
 
                 
@@ -367,10 +371,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     let mouse_pos = input.mouse_pos();
                     // Normalize mouse clicks to be 00 at bottom left corner
                     let (x_norm, y_norm) = (mouse_pos.x as f32, (((mouse_pos.y as f32) - (gpu.config.height as f32))*(-1 as f32)));
-                    println!("{}, {}", x_norm, y_norm);
+                    //println!("{}, {}", x_norm, y_norm);
 
                     let (q, r, s) = xy_to_hex(&gpu, 32.0 as f32, x_norm, y_norm);
-                    println!("{}, {}, {}", q, r, s);
+                    //println!("{}, {}, {}", q, r, s);
 
                     hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
 
@@ -384,6 +388,23 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 ..
             } => {
                 input.handle_mouse_move(position);
+
+                if input.is_mouse_down(winit::event::MouseButton::Left) {
+                    // TODO screen -> multicord needed
+                    let mouse_pos = input.mouse_pos();
+                    // Normalize mouse clicks to be 00 at bottom left corner
+                    let (x_norm, y_norm) = (mouse_pos.x as f32, (((mouse_pos.y as f32) - (gpu.config.height as f32))*(-1 as f32)));
+                    //println!("{}, {}", x_norm, y_norm);
+
+                    let (q, r, s) = xy_to_hex(&gpu, 32.0 as f32, x_norm, y_norm);
+                    //println!("{}, {}, {}", q, r, s);
+
+                    hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
+
+                    sprites.set_sprite_group(0, convert_hexgrid_to_sprites(&gpu, &hexgrid));
+
+                    window.request_redraw();
+                }
             }
             _ => (),
             // Event::WindowEvent {
