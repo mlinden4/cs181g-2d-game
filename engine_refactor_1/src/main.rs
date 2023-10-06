@@ -15,6 +15,7 @@ mod input;
 mod gpuprops;
 mod tile;
 mod units;
+use bytemuck::Zeroable;
 
 use chickenwire::{coordinate::cube::Cube, prelude::MultiCoord};
 use chickenwire::hexgrid::HexGrid;
@@ -46,7 +47,7 @@ fn create_chicken_wire() -> HexGrid<tile::Tile> {
 
 }
 
-fn convert_hexgrid_to_sprites(gpu:&wgpuimpl::WGPU, hexgrid:&HexGrid<tile::Tile>) -> Vec<GPUSprite> {
+fn convert_hexgrid_to_sprites(camera:&gpuprops::GPUCamera, hexgrid:&HexGrid<tile::Tile>, sprites: &mut[GPUSprite]) {
 
     let from_x = 1.0/7.0;
     let from_y = 0.0;
@@ -55,7 +56,8 @@ fn convert_hexgrid_to_sprites(gpu:&wgpuimpl::WGPU, hexgrid:&HexGrid<tile::Tile>)
 
     let size:f32 = 32.0;
 
-    let mut output_sprites:Vec<GPUSprite> = vec![];
+    let mut sprite_num = 0;
+    // let mut output_sprites:Vec<GPUSprite> = vec![];
 
     for q in -hexgrid_radius..=hexgrid_radius {
         for r in -hexgrid_radius..=hexgrid_radius {
@@ -73,35 +75,32 @@ fn convert_hexgrid_to_sprites(gpu:&wgpuimpl::WGPU, hexgrid:&HexGrid<tile::Tile>)
                         // _ => ();
                     }
 
-                    let (world_x_pos, world_y_pos) = hex_idx_to_xy(gpu, size, q as f32,r as f32,s as f32);
+                    let (world_x_pos, world_y_pos) = hex_idx_to_xy(camera, size, q as f32,r as f32,s as f32);
 
-                    output_sprites.push(
-                        GPUSprite {
-                            to_region: [world_x_pos, world_y_pos, size, size],
-                            from_region: [sprite_idx*from_x, from_y, from_width, from_height],
-                        }
-                    )
+                    sprites[sprite_num] = GPUSprite {
+                        to_region: [world_x_pos, world_y_pos, size, size],
+                        from_region: [sprite_idx*from_x, from_y, from_width, from_height],
+                    };
+
+                    sprite_num = sprite_num + 1;
 
                 }
             }
         }
     }
 
-    output_sprites
-
 }
 
-fn hex_idx_to_xy(gpu:&wgpuimpl::WGPU, full_size:f32, q:f32, r:f32, s:f32) -> (f32, f32) {
+fn hex_idx_to_xy(camera:&gpuprops::GPUCamera, full_size:f32, q:f32, r:f32, s:f32) -> (f32, f32) {
 
     let size:f32 = full_size / 2.0 as f32; //32 px
 
     //64 wide, 56 tall
 
-    let x:f32 = (size * ((3.0/2.0) * q)) + gpu.config.width as f32 / 2.0 as f32;
-    let y:f32 = (size * (3.0_f32.sqrt()/2.0 * q + 3.0_f32.sqrt() * r)) + gpu.config.height as f32 / 2.0 as f32;
-    
+    let x:f32 = (size * ((3.0/2.0) * q)) + camera.screen_size[0] / 2.0;
+    let y:f32 = (size * (3.0_f32.sqrt()/2.0 * q + 3.0_f32.sqrt() * r)) + camera.screen_size[1] / 2.0;
 
-    (x, y)
+    (x-16.0, y-16.0)
 }
 
 
@@ -109,32 +108,18 @@ fn abs(x: i32) -> i32 {
     x.abs()
 }
 
-fn xy_to_hex(gpu:&wgpuimpl::WGPU, full_size:f32, x:f32, y:f32) -> (i32, i32, i32) {
+fn xy_to_hex(camera:&gpuprops::GPUCamera, full_size:f32, x:f32, y:f32) -> (i32, i32, i32) {
 
     let size:f32 = full_size / 2.0 as f32; //32 px
 
-    let corrected_x = x - (gpu.config.width as f32 / 2.0 as f32);
-    let corrected_y = y - (gpu.config.height as f32 / 2.0 as f32);
+    let corrected_x = x - (camera.screen_size[0] / 2.0 as f32);
+    let corrected_y = y - (camera.screen_size[1] / 2.0 as f32);
 
     let q:f32 = ((2.0 as f32 / 3.0 as f32) * corrected_x) / size;
     let r:f32 = ((((-1.0 as f32 / 3.0 as f32) * corrected_x) + ((3.0_f32.sqrt() / 3.0 as f32) * corrected_y))) / size;
     let s:f32 = -q - r;
-
-    // let  (mut q_int, mut r_int, mut s_int) = (q as i32, r as i32, s as i32);
-
-    // let q_diff = (q_int as f32 - q).abs();
-    // let r_diff = (r_int as f32 - r).abs();
-    // let s_diff = (s_int as f32 - s).abs();
-
-    // if q_diff > r_diff && q_diff > s_diff {
-    //     q_int = -r_int-s_int;
-    // }else if r_diff > s_diff {
-    //     r_int = -q_int-s_int;
-    // } else {
-    //     s_int = -q_int-r_int;
-    // }
        
-    
+// CHECK THIS
     let mut q_int = q.round() as i32;
     let mut r_int = r.round() as i32;
     let mut s_int = s.round() as i32;
@@ -164,14 +149,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     let mut hexgrid = create_chicken_wire();
 
-
+    // TODO: Max, can we delete these?
+    // TODO: Ask osborn why putting stuff here wasnt working
     let from_x = 1.0/7.0;
     let from_y = 0.0;
     let from_width = 1.0/7.0; //448 x 64
     let from_height = 1.0;
-
-
-    let mut my_sprites = convert_hexgrid_to_sprites(&gpu, &hexgrid);
 
     // let mut my_sprites:Vec<GPUSprite> = vec![
     //     GPUSprite {
@@ -192,11 +175,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     //     },
     // ];
 
-    sprites.add_sprite_group(&gpu, texture, my_sprites);
+    sprites.add_sprite_group(&gpu, texture, vec![GPUSprite::zeroed(); 1024]);
+    // Resverve extra space for each sprite sheet thing. LIke 1024 for the hex map and 1024 for the units, etc.
+    // TODO: Make function to calculate size of hexgrid instead of 1024 above. Can also reallocate dymanically
 
-    
 
-    let camera = gpuprops::GPUCamera {
+    let mut camera = gpuprops::GPUCamera {
         screen_pos: [0.0, 0.0],
         // Consider using config.width and config.height instead,
         // it's up to you whether you want the window size to change what's visible in the game
@@ -206,9 +190,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     
 
 
-
+    const TILE_NUM : usize = 1024; // usize is the type representing the offset in memory (32 on 32 bit systems, 64 on 64 etc. )
     // gpu.queue.write_buffer(&buffer_camera, 0, bytemuck::bytes_of(&camera));
-
+    convert_hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    sprites.refresh_sprites(&gpu, 0, 0..TILE_NUM);
 
 
     let mut input = input::Input::default();
@@ -223,7 +208,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         // the resources are properly cleaned up.
         // let _ = (&gpu.instance, &gpu.adapter, &shader, &pipeline_layout);
 
-        *control_flow = ControlFlow::Wait;
+        *control_flow = ControlFlow::Poll;
         match event {
             Event::WindowEvent {
                 event: WindowEvent::Resized(size),
@@ -231,35 +216,55 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             } => {
                 // Reconfigure the surface with the new size
                 gpu.resize(size);
+                // camera.screen_size = size.into();
+                // sprites.set_camera(&gpu, &camera);
                 // gpu.surface.configure(&gpu.device, &gpu.config);
                 // On macos the window needs to be redrawn manually after resizing
                 window.request_redraw();
+                // figure out how to rerender the hexgrid to sprites as the camera changes
             },
-            Event::RedrawRequested(_) => {
-               
-
-
+            Event::MainEventsCleared => {
                 
                 // let placeholder_coord = MultiCoord::default();
 
                 
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
-                //     global_tile = Tile::new(tile::Terrain::Plain);
-                //     println!("{}", "PLAINS");
-                // }
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
-                //     global_tile = Tile::new(tile::Terrain::Mountain);
-                //     println!("{}", "MOUNTAIN");
-                // }
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
-                //     global_tile = Tile::new(tile::Terrain::Coast);
-                //     println!("{}", "COAST");
-                // }
-                // if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
-                //     global_tile = Tile::new(tile::Terrain::Forest);
-                //     println!("{}", "FOREST");
-                // }
+                if input.is_key_pressed(winit::event::VirtualKeyCode::Key1) {
+                    global_tile = Tile::new(tile::Terrain::Plain);
+                    println!("{}", "PLAINS");
+                }
+                if input.is_key_pressed(winit::event::VirtualKeyCode::Key4) {
+                    global_tile = Tile::new(tile::Terrain::Mountain);
+                    println!("{}", "MOUNTAIN");
+                }
+                if input.is_key_pressed(winit::event::VirtualKeyCode::Key2) {
+                    global_tile = Tile::new(tile::Terrain::Coast);
+                    println!("{}", "COAST");
+                }
+                if input.is_key_pressed(winit::event::VirtualKeyCode::Key3) {
+                    global_tile = Tile::new(tile::Terrain::Forest);
+                    println!("{}", "FOREST");
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::W) {
+                    camera.screen_pos[1] += 10.0;
+                }
 
+                if input.is_mouse_down(winit::event::MouseButton::Left) {
+                    // TODO screen -> multicord needed
+                    let mouse_pos = input.mouse_pos();
+                    // Normalize mouse clicks to be 00 at bottom left corner
+                    // this stays ase gpu bc mouse coords normalize
+                    let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+                    // println!("{}, {}", x_norm, y_norm);
+
+                    let (q, r, s) = xy_to_hex(&camera, 32.0 as f32, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]);
+                    // expecting inputs in screen space, not 0 to one so we multiply by camera size
+                    // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
+                    //println!("{}, {}, {}", q, r, s);
+
+                    hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
+
+                    convert_hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+                }
 
                 // let my_sprites = sprites.get_sprites_mut(0);
 
@@ -283,7 +288,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 
                 input.next_frame();
                 sprites.set_camera(&gpu, &camera);
-                let length = sprites.get_sprites(0).len();
+                let length = sprites.get_sprites(0).len(); // maybe only some of them instead of all?
                 sprites.refresh_sprites(&gpu, 0, 0..length);
 
                 // ... All the 3d drawing code/render pipeline/queue/frame stuff goes here ...
@@ -331,7 +336,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 window.request_redraw();
 
                 // Leave now_keys alone, but copy over all changed keys
-                input.next_frame();
             },
             // WindowEvent->KeyboardInput: Keyboard input!
             Event::WindowEvent {
@@ -342,22 +346,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 },
                 ..
             } => {
-                if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
-                    global_tile = Tile::new(tile::Terrain::Plain);
-                    println!("{}", "PLAINS");
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::Key4) {
-                    global_tile = Tile::new(tile::Terrain::Mountain);
-                    println!("{}", "MOUNTAIN");
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
-                    global_tile = Tile::new(tile::Terrain::Coast);
-                    println!("{}", "COAST");
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::Key3) {
-                    global_tile = Tile::new(tile::Terrain::Forest);
-                    println!("{}", "FOREST");
-                }
                 input.handle_key_event(key_ev);
             },
             Event::WindowEvent {
@@ -365,53 +353,18 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 ..
             } => {
                 input.handle_mouse_button(state, button);
-
-                if input.is_mouse_down(winit::event::MouseButton::Left) {
-                    // TODO screen -> multicord needed
-                    let mouse_pos = input.mouse_pos();
-                    // Normalize mouse clicks to be 00 at bottom left corner
-                    let (x_norm, y_norm) = (mouse_pos.x as f32, (((mouse_pos.y as f32) - (gpu.config.height as f32))*(-1 as f32)));
-                    //println!("{}, {}", x_norm, y_norm);
-
-                    let (q, r, s) = xy_to_hex(&gpu, 32.0 as f32, x_norm, y_norm);
-                    //println!("{}, {}, {}", q, r, s);
-
-                    hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
-
-                    sprites.set_sprite_group(0, convert_hexgrid_to_sprites(&gpu, &hexgrid));
-
-                    window.request_redraw();
-                }
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
                 input.handle_mouse_move(position);
-
-                if input.is_mouse_down(winit::event::MouseButton::Left) {
-                    // TODO screen -> multicord needed
-                    let mouse_pos = input.mouse_pos();
-                    // Normalize mouse clicks to be 00 at bottom left corner
-                    let (x_norm, y_norm) = (mouse_pos.x as f32, (((mouse_pos.y as f32) - (gpu.config.height as f32))*(-1 as f32)));
-                    //println!("{}, {}", x_norm, y_norm);
-
-                    let (q, r, s) = xy_to_hex(&gpu, 32.0 as f32, x_norm, y_norm);
-                    //println!("{}, {}, {}", q, r, s);
-
-                    hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
-
-                    sprites.set_sprite_group(0, convert_hexgrid_to_sprites(&gpu, &hexgrid));
-
-                    window.request_redraw();
-                }
             }
-            _ => (),
-            // Event::WindowEvent {
-            //     event: WindowEvent::CloseRequested,
-            //     ..
-            // } => *control_flow = ControlFlow::Exit,
-            // _ => {}
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => *control_flow = ControlFlow::Exit,
+            _ => {}
         }
     });
 }
