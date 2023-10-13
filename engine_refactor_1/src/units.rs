@@ -5,6 +5,7 @@ use crate::tile::Terrain;
 use crate::tile::Tile;
 use chickenwire::coordinate;
 use chickenwire::prelude::HexGrid;
+use chickenwire::prelude::MultiCoord;
 
 pub struct Unit {
     name: String,
@@ -127,5 +128,12 @@ impl Unit {
         }
     }
 
+}
+
+// vec of neccesary units 
+// TODO: location and add more units
+pub fn init_units_vec() -> Vec<Unit> {
+    let unit_vec: Vec<Unit> = (0..6).map(|_| Unit::tank(MultiCoord::force_cube(0, 0, 0))).collect();
+    unit_vec
 }
  

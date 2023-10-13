@@ -15,6 +15,7 @@ mod input;
 mod gpuprops;
 mod tile;
 mod units;
+mod player;
 use bytemuck::Zeroable;
 
 use chickenwire::{coordinate::cube::Cube, prelude::MultiCoord};
