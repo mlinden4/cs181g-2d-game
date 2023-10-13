@@ -7,7 +7,7 @@ use chickenwire::coordinate;
 use chickenwire::prelude::HexGrid;
 
 pub struct Unit {
-    name: String,
+    pub name: String,
     hp: usize,
     soft_attack: usize,
     hard_attack: usize,
@@ -15,7 +15,7 @@ pub struct Unit {
     defense: usize,
     movement: usize,
     terrain_modifiers: [TerrainModifier; 4], // Three terrain modifiers
-    location: coordinate::MultiCoord
+    pub location: coordinate::MultiCoord
 }
 
 impl Unit {
