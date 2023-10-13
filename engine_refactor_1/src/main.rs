@@ -27,6 +27,7 @@ enum Shape {
 }
 
 const hexgrid_radius:i32 = 10;
+const hex_size:f32 = 64.0;
 
 // move this out eventually
 fn create_chicken_wire() -> HexGrid<tile::Tile> {
@@ -54,8 +55,6 @@ fn convert_hexgrid_to_sprites(camera:&gpuprops::GPUCamera, hexgrid:&HexGrid<tile
     let from_width = 1.0/7.0; //448 x 64
     let from_height = 1.0;
 
-    let size:f32 = 32.0;
-
     let mut sprite_num = 0;
     // let mut output_sprites:Vec<GPUSprite> = vec![];
 
@@ -75,10 +74,10 @@ fn convert_hexgrid_to_sprites(camera:&gpuprops::GPUCamera, hexgrid:&HexGrid<tile
                         // _ => ();
                     }
 
-                    let (world_x_pos, world_y_pos) = hex_idx_to_xy(camera, size, q as f32,r as f32,s as f32);
+                    let (world_x_pos, world_y_pos) = hex_idx_to_xy(camera, hex_size, q as f32,r as f32,s as f32);
 
                     sprites[sprite_num] = GPUSprite {
-                        to_region: [world_x_pos, world_y_pos, size, size],
+                        to_region: [world_x_pos, world_y_pos, hex_size, hex_size],
                         from_region: [sprite_idx*from_x, from_y, from_width, from_height],
                     };
 
@@ -100,7 +99,7 @@ fn hex_idx_to_xy(camera:&gpuprops::GPUCamera, full_size:f32, q:f32, r:f32, s:f32
     let x:f32 = (size * ((3.0/2.0) * q)) + camera.screen_size[0] / 2.0;
     let y:f32 = (size * (3.0_f32.sqrt()/2.0 * q + 3.0_f32.sqrt() * r)) + camera.screen_size[1] / 2.0;
 
-    (x-16.0, y-16.0)
+    (x-size, y-size)
 }
 
 
@@ -226,7 +225,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             Event::MainEventsCleared => {
                 
                 // let placeholder_coord = MultiCoord::default();
-
                 
                 if input.is_key_pressed(winit::event::VirtualKeyCode::Key1) {
                     global_tile = Tile::new(tile::Terrain::Plain);
@@ -247,21 +245,41 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 if input.is_key_down(winit::event::VirtualKeyCode::W) {
                     camera.screen_pos[1] += 10.0;
                 }
+                if input.is_key_down(winit::event::VirtualKeyCode::A) {
+                    camera.screen_pos[0] -= 10.0;
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::S) {
+                    camera.screen_pos[1] -= 10.0;
+                }
+                if input.is_key_down(winit::event::VirtualKeyCode::D) {
+                    camera.screen_pos[0] += 10.0;
+                }
 
                 if input.is_mouse_down(winit::event::MouseButton::Left) {
                     // TODO screen -> multicord needed
                     let mouse_pos = input.mouse_pos();
                     // Normalize mouse clicks to be 00 at bottom left corner
                     // this stays ase gpu bc mouse coords normalize
-                    let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+                    // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
+                    // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
+                    //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+                    
+                    let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
+                                            ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
                     // println!("{}, {}", x_norm, y_norm);
 
-                    let (q, r, s) = xy_to_hex(&camera, 32.0 as f32, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]);
+                    // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
+                    let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm, y_norm);
                     // expecting inputs in screen space, not 0 to one so we multiply by camera size
                     // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
                     //println!("{}, {}, {}", q, r, s);
 
+                    println!("{} {}", x_norm, y_norm);
+                    println!("{} {} {}", q, r, s);
+                    
+
                     hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
+
 
                     convert_hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
                 }
