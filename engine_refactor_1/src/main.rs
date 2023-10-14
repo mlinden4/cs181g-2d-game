@@ -21,187 +21,7 @@ use chickenwire::{coordinate::cube::Cube, prelude::MultiCoord};
 use chickenwire::hexgrid::HexGrid;
 use chickenwire::coordinate;
 
-enum Shape {
-    FilledCircle,
-    OutlinedRectangle
-}
-
-const hexgrid_radius:i32 = 10;
-const hex_size:f32 = 64.0;
-    
-const from_x:f32 = 1.0/7.0;
-const from_y:f32 = 0.0;
-const from_width:f32 = 1.0/7.0; //448 x 64
-const from_height:f32 = 1.0;
-
-// move this out eventually
-fn create_terrain_hexgrid() -> HexGrid<tile::Tile> {
-
-    let default_tile = tile::Tile::new(tile::Terrain::Coast);
-
-    let mut terrain_hexgrid: HexGrid<tile::Tile> = HexGrid::new_radial(hexgrid_radius as u32, default_tile);
-
-    terrain_hexgrid
-
-}
-
-fn create_unit_hexgrid() -> HexGrid<units::Unit> {
-    let unit_hexgrid: HexGrid<units::Unit> = HexGrid::new(chickenwire::hexgrid::Tilt::Flat, chickenwire::hexgrid::Parity::Even, chickenwire::prelude::CoordSys::Cube);
-
-    unit_hexgrid
-}
-
-fn terrain_hexgrid_to_sprites(camera:&gpuprops::GPUCamera, hexgrid:&HexGrid<tile::Tile>, sprites: &mut[GPUSprite]) {
-
-    let mut sprite_num = 0;
-    // let mut output_sprites:Vec<GPUSprite> = vec![];
-
-    for q in -hexgrid_radius..=hexgrid_radius {
-        for r in -hexgrid_radius..=hexgrid_radius {
-            for s in -hexgrid_radius..=hexgrid_radius {
-                if q + r + s == 0 {
-
-                    let hex = hexgrid.get(coordinate::MultiCoord::force_cube(q, r, s)).unwrap();
-
-                    let mut sprite_idx = 0.0;
-                    match hex.terrain {
-                        tile::Terrain::Coast => { sprite_idx = 3.0 }
-                        tile::Terrain::Plain => { sprite_idx = 4.0 }
-                        tile::Terrain::Mountain => { sprite_idx = 0.0 }
-                        tile::Terrain::Forest => { sprite_idx = 2.0 }
-                        // _ => ();
-                    }
-
-                    let (world_x_pos, world_y_pos) = hex_to_xy(camera, hex_size, q as f32,r as f32,s as f32);
-
-                    sprites[sprite_num] = GPUSprite {
-                        to_region: [world_x_pos, world_y_pos, hex_size, hex_size],
-                        from_region: [sprite_idx*from_x, from_y, from_width, from_height],
-                    };
-
-                    sprite_num = sprite_num + 1;
-
-                }
-            }
-        }
-    }
-}
-
-// fn unit_hexgrid_to_sprites(camera:&gpuprops::GPUCamera, hexgrid:&HexGrid<tile::Tile>, sprites: &mut[GPUSprite]) {
-
-//     let mut sprite_num = 0;
-
-//     for q in -hexgrid_radius..=hexgrid_radius {
-//         for r in -hexgrid_radius..=hexgrid_radius {
-//             for s in -hexgrid_radius..=hexgrid_radius {
-//                 if q + r + s == 0 {
-
-//                     let hex = hexgrid.get(coordinate::MultiCoord::force_cube(q, r, s)).unwrap();
-
-//                     let mut sprite_idx = 0.0;
-//                     match hex.terrain {
-//                         tile::Terrain::Coast => { sprite_idx = 3.0 }
-//                         tile::Terrain::Plain => { sprite_idx = 4.0 }
-//                         tile::Terrain::Mountain => { sprite_idx = 0.0 }
-//                         tile::Terrain::Forest => { sprite_idx = 2.0 }
-//                         // _ => ();
-//                     }
-
-//                     let (world_x_pos, world_y_pos) = hex_to_xy(camera, hex_size, q as f32,r as f32,s as f32);
-
-//                     sprites[sprite_num] = GPUSprite {
-//                         to_region: [world_x_pos, world_y_pos, hex_size, hex_size],
-//                         from_region: [sprite_idx*from_x, from_y, from_width, from_height],
-//                     };
-
-//                     sprite_num = sprite_num + 1;
-
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// fn add_unit_to_hexgrid(hexgrid:&HexGrid<tile::Tile>, unit: &Unit){
-//     hexgrid.set(unit.location, unit);
-// }
-
-// fn move_unit_on_hexgrid(hexgrid:&HexGrid<tile::Tile>, unit: &mut Unit, new_pos: &coordinate::MultiCoord) {
-//     let old_pos = unit.location;
-//     unit.location = new_pos;
-//     hexgrid.set(unit.location, unit);
-//     hexgrid.remove(old_pos);
-// }
-
-fn units_to_sprites(camera:&gpuprops::GPUCamera, units:&[units::Unit], sprites: &mut[GPUSprite]){
-    let mut sprite_num = 0;
-    
-    units.iter().for_each(|unit| {
-
-        let mut sprite_idx = 0.0;
-
-        match unit.name.as_str() {
-            "Tank" => sprite_idx = 5.0,
-            _ => sprite_idx = 1.0,
-        }
-
-
-        let (q,r,s) = (unit.location.to_cube().unwrap().x(), unit.location.to_cube().unwrap().y(), unit.location.to_cube().unwrap().z());
-
-        let (world_x_pos, world_y_pos) = hex_to_xy(camera, hex_size, q as f32,r as f32,s as f32);
-
-        sprites[sprite_num] = GPUSprite {
-            to_region: [world_x_pos, world_y_pos, hex_size, hex_size],
-            from_region: [sprite_idx*from_x, from_y, from_width, from_height],
-        };
-
-        sprite_num = sprite_num + 1;
-    });
-}
-
-fn hex_to_xy(camera:&gpuprops::GPUCamera, full_size:f32, q:f32, r:f32, s:f32) -> (f32, f32) {
-
-    let size:f32 = full_size / 2.0 as f32; //32 px
-
-    //64 wide, 56 tall
-
-    let x:f32 = (size * ((3.0/2.0) * q)) + camera.screen_size[0] / 2.0;
-    let y:f32 = (size * (3.0_f32.sqrt()/2.0 * q + 3.0_f32.sqrt() * r)) + camera.screen_size[1] / 2.0;
-
-    (x-size, y-size)
-}
-
-
-fn xy_to_hex(camera:&gpuprops::GPUCamera, full_size:f32, x:f32, y:f32) -> (i32, i32, i32) {
-
-    let size:f32 = full_size / 2.0 as f32; //32 px
-
-    let corrected_x = x - (camera.screen_size[0] / 2.0 as f32);
-    let corrected_y = y - (camera.screen_size[1] / 2.0 as f32);
-
-    let q:f32 = ((2.0 as f32 / 3.0 as f32) * corrected_x) / size;
-    let r:f32 = ((((-1.0 as f32 / 3.0 as f32) * corrected_x) + ((3.0_f32.sqrt() / 3.0 as f32) * corrected_y))) / size;
-    let s:f32 = -q - r;
-       
-// CHECK THIS
-    let mut q_int = q.round() as i32;
-    let mut r_int = r.round() as i32;
-    let mut s_int = s.round() as i32;
-
-    let q_diff = (q_int - q.round() as i32).abs();
-    let r_diff = (r_int - r.round() as i32).abs();
-    let s_diff = (s_int - s.round() as i32).abs();
-
-    if q_diff > r_diff && q_diff > s_diff {
-        q_int = -r_int-s_int;
-    }else if r_diff > s_diff {
-        r_int = -q_int-s_int;
-    } else {
-        s_int = -q_int-r_int;
-    }
-
-    (q_int,r_int,s_int)
-}
+mod gamemap;
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let mut gpu = wgpuimpl::WGPU::new(&window).await;
@@ -213,8 +33,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let tex_image_w = tex_image.width();
     let tex_image_h = tex_image.height();
 
-    let mut terrain_hexgrid = create_terrain_hexgrid();
-    let mut unit_hexgrid = create_unit_hexgrid();
+    let mut hexgrid = gamemap::create_hexgrid();
 
   
     let mut player1_units = vec![];
@@ -258,9 +77,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     const TILE_NUM : usize = 1024; // usize is the type representing the offset in memory (32 on 32 bit systems, 64 on 64 etc. )
     // gpu.queue.write_buffer(&buffer_camera, 0, bytemuck::bytes_of(&camera));
-    terrain_hexgrid_to_sprites(&camera, &terrain_hexgrid, sprites.get_sprites_mut(0));
-    units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
-    units_to_sprites(&camera, &player2_units, sprites.get_sprites_mut(2));
+    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+    gamemap::units_to_sprites(&camera, &player2_units, sprites.get_sprites_mut(2));
     sprites.refresh_sprites(&gpu, 0, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 1, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 2, 0..TILE_NUM);
@@ -328,14 +147,25 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                 if input.is_key_down(winit::event::VirtualKeyCode::P) {
                     player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
-                    units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+                    gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
                     println!("{}", "moved")
                 }
                 if input.is_key_down(winit::event::VirtualKeyCode::O) {
                     player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
-                    units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+                    gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
                     println!("{}", "moved")
                 }
+
+                if input.is_key_down(winit::event::VirtualKeyCode::M) {
+                    gamemap::save_hexgrid(&hexgrid);
+                }
+
+                if input.is_key_down(winit::event::VirtualKeyCode::L) {
+                    gamemap::load_hexgrid(&mut hexgrid);
+                    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+                }
+
+                
 
 
                 if input.is_mouse_down(winit::event::MouseButton::Left) {
@@ -352,7 +182,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     // println!("{}, {}", x_norm, y_norm);
 
                     // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
-                    let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm, y_norm);
+                    let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
                     // expecting inputs in screen space, not 0 to one so we multiply by camera size
                     // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
                     //println!("{}, {}, {}", q, r, s);
@@ -361,9 +191,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     println!("{} {} {}", q, r, s);
                     
 
-                    terrain_hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
+                    hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
 
-                    terrain_hexgrid_to_sprites(&camera, &terrain_hexgrid, sprites.get_sprites_mut(0));
+                    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
                 }
 
                 
