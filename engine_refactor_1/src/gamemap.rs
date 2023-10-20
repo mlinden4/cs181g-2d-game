@@ -192,7 +192,7 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
             println!("Loading from: {}", file_name);
         }
         Err(error) => {
-            eprintln!("Error reading input: {}", error);
+            println!("Error reading input: {}", error);
         }
     }
 

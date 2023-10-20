@@ -16,6 +16,7 @@ mod gpuprops;
 mod tile;
 mod units;
 use bytemuck::Zeroable;
+use std::time::Instant;
 
 use chickenwire::{coordinate::cube::Cube, prelude::MultiCoord};
 use chickenwire::hexgrid::HexGrid;
@@ -23,57 +24,156 @@ use chickenwire::coordinate;
 
 mod gamemap;
 
-async fn run(event_loop: EventLoop<()>, window: Window) {
-    let mut gpu = wgpuimpl::WGPU::new(&window).await;
-    let mut sprites = spriterenderer::SpriteRenderer::new(&gpu);
+enum GameState {    //The bool indicates if the state needs to be initialized (true for yes)
+    MainMenu(bool),
+    MapCreator(bool),
+    WarGame(bool),
+    GameOver(bool, usize) //Usize indiciate which player won (1 or 2)
+}
 
-    let (texture0, tex_image) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
-    let (texture1, tex_image) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
-    let (texture2, tex_image) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
-    let tex_image_w = tex_image.width();
-    let tex_image_h = tex_image.height();
+fn initalizeMapCreator(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
+    texture:wgpu::Texture, sprites:&mut spriterenderer::SpriteRenderer, global_tile: &mut tile::Tile) {
 
-    let mut hexgrid = gamemap::create_hexgrid();
+    sprites.add_sprite_group(&gpu, texture, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
+    // Resverve extra space for each sprite sheet thing. LIke 1024 for the hex map and 1024 for the units, etc.
+    // TODO: Make function to calculate size of hexgrid instead of 1024 above. Can also reallocate dymanically
 
-  
-    let mut player1_units = vec![];
-    let mut player2_units = vec![];
+    const TILE_NUM : usize = 1024;
+    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    sprites.refresh_sprites(&gpu, 0, 0..TILE_NUM);
+
+    *global_tile = Tile::new(tile::Terrain::Forest);
+
+}
+
+fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
+    sprites:&mut spriterenderer::SpriteRenderer, global_tile: &mut tile::Tile, game_state:&mut GameState) {
+    
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Key1) {
+        *global_tile = Tile::new(tile::Terrain::Plain);
+        println!("{}", "PLAINS");
+    }
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Key4) {
+        *global_tile = Tile::new(tile::Terrain::Mountain);
+        println!("{}", "MOUNTAIN");
+    }
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Key2) {
+        *global_tile = Tile::new(tile::Terrain::Coast);
+        println!("{}", "COAST");
+    }
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Key3) {
+        *global_tile = Tile::new(tile::Terrain::Forest);
+        println!("{}", "FOREST");
+    }
+    if input.is_key_down(winit::event::VirtualKeyCode::W) {
+        camera.screen_pos[1] += 10.0;
+    }
+    if input.is_key_down(winit::event::VirtualKeyCode::A) {
+        camera.screen_pos[0] -= 10.0;
+    }
+    if input.is_key_down(winit::event::VirtualKeyCode::S) {
+        camera.screen_pos[1] -= 10.0;
+    }
+    if input.is_key_down(winit::event::VirtualKeyCode::D) {
+        camera.screen_pos[0] += 10.0;
+    }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::P) {
+        *game_state = GameState::WarGame(true);
+    }
+
+    // if input.is_key_down(winit::event::VirtualKeyCode::P) {
+    //     player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
+    //     gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+    //     println!("{}", "moved")
+    // }
+    // if input.is_key_down(winit::event::VirtualKeyCode::O) {
+    //     player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
+    //     gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+    //     println!("{}", "moved")
+    // }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::M) {
+        gamemap::save_hexgrid(&hexgrid);
+    }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::L) {
+        gamemap::load_hexgrid(hexgrid);
+        gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    }
+
+    
+
+
+    if input.is_mouse_down(winit::event::MouseButton::Left) {
+        // TODO screen -> multicord needed
+        let mouse_pos = input.mouse_pos();
+        // Normalize mouse clicks to be 00 at bottom left corner
+        // this stays ase gpu bc mouse coords normalize
+        // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
+        // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
+        //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+        
+        let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
+                                ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
+        // println!("{}, {}", x_norm, y_norm);
+
+        // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
+        let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
+        // expecting inputs in screen space, not 0 to one so we multiply by camera size
+        // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
+        //println!("{}, {}, {}", q, r, s);
+
+        println!("{} {}", x_norm, y_norm);
+        println!("{} {} {}", q, r, s);
+        
+
+        hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), *global_tile);
+
+        gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    }
+    
+    
+    sprites.set_camera(&gpu, &camera);
+    
+    // Only update the hexmap, do not include units
+    let length = sprites.get_sprites(0).len(); 
+    sprites.refresh_sprites(&gpu, 0, 0..length);
+    // let length = sprites.get_sprites(1).len();
+    // sprites.refresh_sprites(&gpu, 1, 0..length);
+    // let length = sprites.get_sprites(2).len();
+    // sprites.refresh_sprites(&gpu, 2, 0..length);
+
+}
+
+fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
+    texture0:wgpu::Texture, texture1:wgpu::Texture, texture2:wgpu::Texture, sprites:&mut spriterenderer::SpriteRenderer, 
+    player1_units:&mut Vec<units::Unit>, player2_units:&mut Vec<units::Unit>) {
+
+    let mut p1_units = vec![];
+    let mut p2_units = vec![];
 
     let tank1 = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0));
     let tank2 = units::Unit::tank(coordinate::MultiCoord::force_cube(5, -1, -4));
 
-    player1_units.push(tank1);
-    player1_units.push(tank2);
+    p1_units.push(tank1);
+    p1_units.push(tank2);
 
     let tank3 = units::Unit::tank(coordinate::MultiCoord::force_cube(-7, 0, 7));
     let tank4 = units::Unit::tank(coordinate::MultiCoord::force_cube(-8, 0, 8));
 
-    player2_units.push(tank3);
-    player2_units.push(tank4);
+    p2_units.push(tank3);
+    p2_units.push(tank4);
 
-    // for unit in player1_units {
-    //     add_unit_to_hexgrid(unit_hexgrid, unit);
-    // }
-    // for unit in player2_units {
-    //     add_unit_to_hexgrid(unit_hexgrid, unit);
-    // }
+    *player1_units = p1_units;
+    *player2_units = p2_units;
 
-
-        // moving units is move_unit_fn
 
     sprites.add_sprite_group(&gpu, texture0, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
     sprites.add_sprite_group(&gpu, texture1, vec![GPUSprite::zeroed(); 1024]);   // 1 is player 1 units
     sprites.add_sprite_group(&gpu, texture2, vec![GPUSprite::zeroed(); 1024]);   // 2 is player 2 units
     // Resverve extra space for each sprite sheet thing. LIke 1024 for the hex map and 1024 for the units, etc.
     // TODO: Make function to calculate size of hexgrid instead of 1024 above. Can also reallocate dymanically
-
-
-    let mut camera = gpuprops::GPUCamera {
-        screen_pos: [0.0, 0.0],
-        screen_size: [gpu.config.width as f32, gpu.config.height as f32],
-    };
-    
-
 
     const TILE_NUM : usize = 1024; // usize is the type representing the offset in memory (32 on 32 bit systems, 64 on 64 etc. )
     // gpu.queue.write_buffer(&buffer_camera, 0, bytemuck::bytes_of(&camera));
@@ -84,11 +184,147 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     sprites.refresh_sprites(&gpu, 1, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 2, 0..TILE_NUM);
 
+}
 
+
+fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
+    sprites:&mut spriterenderer::SpriteRenderer, player1_units:&mut[units::Unit], player2_units:&mut[units::Unit], game_state:&mut GameState) {
+    
+    if input.is_key_down(winit::event::VirtualKeyCode::W) {
+        camera.screen_pos[1] += 10.0;
+    }
+    if input.is_key_down(winit::event::VirtualKeyCode::A) {
+        camera.screen_pos[0] -= 10.0;
+    }
+    if input.is_key_down(winit::event::VirtualKeyCode::S) {
+        camera.screen_pos[1] -= 10.0;
+    }
+    if input.is_key_down(winit::event::VirtualKeyCode::D) {
+        camera.screen_pos[0] += 10.0;
+    }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::P) {
+        *game_state = GameState::MapCreator(true);
+    }
+
+
+
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Z) {
+        player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
+        gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+        println!("{}", "moved")
+    }
+    if input.is_key_pressed(winit::event::VirtualKeyCode::X) {
+        player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
+        gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+        println!("{}", "moved")
+    }
+
+    // if input.is_key_pressed(winit::event::VirtualKeyCode::M) {
+    //     gamemap::save_hexgrid(&hexgrid);
+    // }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::L) {
+        gamemap::load_hexgrid(hexgrid);
+        gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    }
+
+    
+
+
+    // if input.is_mouse_down(winit::event::MouseButton::Left) {
+    //     // TODO screen -> multicord needed
+    //     let mouse_pos = input.mouse_pos();
+    //     // Normalize mouse clicks to be 00 at bottom left corner
+    //     // this stays ase gpu bc mouse coords normalize
+    //     // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
+    //     // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
+    //     //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+        
+    //     let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
+    //                             ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
+    //     // println!("{}, {}", x_norm, y_norm);
+
+    //     // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
+    //     let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
+    //     // expecting inputs in screen space, not 0 to one so we multiply by camera size
+    //     // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
+    //     //println!("{}, {}, {}", q, r, s);
+
+    //     println!("{} {}", x_norm, y_norm);
+    //     println!("{} {} {}", q, r, s);
+        
+
+    //     hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), *global_tile);
+
+    //     gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    // }
+    
+    sprites.set_camera(&gpu, &camera);
+    
+    let length = sprites.get_sprites(0).len(); // maybe only some of them instead of all?
+    sprites.refresh_sprites(&gpu, 0, 0..length);
+    let length = sprites.get_sprites(1).len();
+    sprites.refresh_sprites(&gpu, 1, 0..length);
+    let length = sprites.get_sprites(2).len();
+    sprites.refresh_sprites(&gpu, 2, 0..length);
+
+}
+
+
+async fn run(event_loop: EventLoop<()>, window: Window) {
+    let mut gpu = wgpuimpl::WGPU::new(&window).await;
+    let mut sprites = spriterenderer::SpriteRenderer::new(&gpu);
+
+    //let (texture0, tex_image) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+    // let tex_image_w = tex_image.width();
+    // let tex_image_h = tex_image.height();
+    
+    let (texture0, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+    let (texture1, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+    let (texture2, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+    
     let mut input = input::Input::default();
+    let mut hexgrid = gamemap::create_hexgrid();
 
+    let mut camera = gpuprops::GPUCamera {
+        screen_pos: [0.0, 0.0],
+        screen_size: [gpu.config.width as f32, gpu.config.height as f32],
+    };
+
+    // TIMING
+    let mut acc = 0.0_f32;
+    let mut prev_t = Instant::now();
+    const SIM_DT : f32 = 1.0/60.0; // 60 simulation steps per second
+
+    
+    
+
+    
+
+    
+
+    
+
+    // Special Global Variables
+    let mut game_state = GameState::MapCreator(true);
+
+    // Main Menu
+
+    // Map Creator
     let mut global_tile = Tile::new(tile::Terrain::Plain);
-    println!("*******{}",  matches!(global_tile.terrain, tile::Terrain::Plain));
+
+    // War Game
+    let mut player1_units = vec![];
+    let mut player2_units = vec![];
+
+    // Game Over
+    
+
+    
+    
+    
 
 
     event_loop.run(move |event, _, control_flow| {
@@ -113,100 +349,154 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 // figure out how to rerender the hexgrid to sprites as the camera changes
             },
             Event::MainEventsCleared => {
-                
-                // let placeholder_coord = MultiCoord::default();
-                
-                if input.is_key_pressed(winit::event::VirtualKeyCode::Key1) {
-                    global_tile = Tile::new(tile::Terrain::Plain);
-                    println!("{}", "PLAINS");
-                }
-                if input.is_key_pressed(winit::event::VirtualKeyCode::Key4) {
-                    global_tile = Tile::new(tile::Terrain::Mountain);
-                    println!("{}", "MOUNTAIN");
-                }
-                if input.is_key_pressed(winit::event::VirtualKeyCode::Key2) {
-                    global_tile = Tile::new(tile::Terrain::Coast);
-                    println!("{}", "COAST");
-                }
-                if input.is_key_pressed(winit::event::VirtualKeyCode::Key3) {
-                    global_tile = Tile::new(tile::Terrain::Forest);
-                    println!("{}", "FOREST");
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::W) {
-                    camera.screen_pos[1] += 10.0;
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::A) {
-                    camera.screen_pos[0] -= 10.0;
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::S) {
-                    camera.screen_pos[1] -= 10.0;
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::D) {
-                    camera.screen_pos[0] += 10.0;
-                }
 
-                if input.is_key_down(winit::event::VirtualKeyCode::P) {
-                    player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
-                    gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
-                    println!("{}", "moved")
-                }
-                if input.is_key_down(winit::event::VirtualKeyCode::O) {
-                    player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
-                    gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
-                    println!("{}", "moved")
-                }
-
-                if input.is_key_down(winit::event::VirtualKeyCode::M) {
-                    gamemap::save_hexgrid(&hexgrid);
-                }
-
-                if input.is_key_down(winit::event::VirtualKeyCode::L) {
-                    gamemap::load_hexgrid(&mut hexgrid);
-                    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
-                }
-
-                
-
-
-                if input.is_mouse_down(winit::event::MouseButton::Left) {
-                    // TODO screen -> multicord needed
-                    let mouse_pos = input.mouse_pos();
-                    // Normalize mouse clicks to be 00 at bottom left corner
-                    // this stays ase gpu bc mouse coords normalize
-                    // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
-                    // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
-                    //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+                // Handle timing
+                let elapsed = prev_t.elapsed().as_secs_f32();
+                acc += elapsed;
+                prev_t = Instant::now();
+                while acc >= SIM_DT {
                     
-                    let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
-                                            ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
-                    // println!("{}, {}", x_norm, y_norm);
+                    // Handle Updating Game
+                    match game_state {
+                        GameState::MainMenu(needs_initialization) => {
+                            if needs_initialization { 
+                                /*initialize*/ 
+                                game_state = GameState::MainMenu(false) 
+                            }
+                            // Handle main menu
+                        }
+                        GameState::MapCreator(needs_initialization) => {
+                            if needs_initialization { 
+                                // println!("Initializing");
+                                let (texture_sheet, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+                                initalizeMapCreator(&gpu, &mut camera, &mut hexgrid, texture_sheet, &mut sprites, &mut global_tile);
+                                game_state = GameState::MapCreator(false) 
+                            }
+                            println!("Updating Map");
+                            updateMapCreator(&gpu, &mut input, &mut camera, &mut hexgrid, &mut sprites, &mut global_tile, &mut game_state);
+                        }
+                        GameState::WarGame(needs_initialization) => {
+                            if needs_initialization { 
+                                let (texture_sheet0, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+                                let (texture_sheet1, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+                                let (texture_sheet2, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+                                initalizeWarGame(&gpu, &mut camera, &mut hexgrid, texture_sheet0, texture_sheet1, texture_sheet2, &mut sprites, &mut player1_units, &mut player2_units);
+                                game_state = GameState::WarGame(false) 
+                            }
+                            println!("Updating War");
+                            updateWarGame(&gpu, &mut input, &mut camera, &mut hexgrid, &mut sprites, &mut player1_units, &mut player2_units, &mut game_state);
+                        }
+                        GameState::GameOver(needs_initialization, winner) => {
+                            if needs_initialization { 
+                                /*initialize*/ 
+                                game_state = GameState::GameOver(false, 0) 
+                            }
+                            // Handle main menu
+                        }
+                    }
 
-                    // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
-                    let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
-                    // expecting inputs in screen space, not 0 to one so we multiply by camera size
-                    // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
-                    //println!("{}, {}, {}", q, r, s);
+                    // NOTE: This is when you should swap "new" keys and "old" keys for input handling!
+                    // Otherwise you'll see several frames in a row where a key was just pressed/released.
+                    
+                    input.next_frame();
 
-                    println!("{} {}", x_norm, y_norm);
-                    println!("{} {} {}", q, r, s);
+                    acc -= SIM_DT;
+                }
+                
+                
+                {
+                // if input.is_key_pressed(winit::event::VirtualKeyCode::Key1) {
+                //     global_tile = Tile::new(tile::Terrain::Plain);
+                //     println!("{}", "PLAINS");
+                // }
+                // if input.is_key_pressed(winit::event::VirtualKeyCode::Key4) {
+                //     global_tile = Tile::new(tile::Terrain::Mountain);
+                //     println!("{}", "MOUNTAIN");
+                // }
+                // if input.is_key_pressed(winit::event::VirtualKeyCode::Key2) {
+                //     global_tile = Tile::new(tile::Terrain::Coast);
+                //     println!("{}", "COAST");
+                // }
+                // if input.is_key_pressed(winit::event::VirtualKeyCode::Key3) {
+                //     global_tile = Tile::new(tile::Terrain::Forest);
+                //     println!("{}", "FOREST");
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::W) {
+                //     camera.screen_pos[1] += 10.0;
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::A) {
+                //     camera.screen_pos[0] -= 10.0;
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::S) {
+                //     camera.screen_pos[1] -= 10.0;
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::D) {
+                //     camera.screen_pos[0] += 10.0;
+                // }
+
+                // if input.is_key_down(winit::event::VirtualKeyCode::P) {
+                //     player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
+                //     gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+                //     println!("{}", "moved")
+                // }
+                // if input.is_key_down(winit::event::VirtualKeyCode::O) {
+                //     player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
+                //     gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+                //     println!("{}", "moved")
+                // }
+
+                // if input.is_key_down(winit::event::VirtualKeyCode::M) {
+                //     gamemap::save_hexgrid(&hexgrid);
+                // }
+
+                // if input.is_key_down(winit::event::VirtualKeyCode::L) {
+                //     gamemap::load_hexgrid(&mut hexgrid);
+                //     gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+                // }
+
+                
+
+
+                // if input.is_mouse_down(winit::event::MouseButton::Left) {
+                //     // TODO screen -> multicord needed
+                //     let mouse_pos = input.mouse_pos();
+                //     // Normalize mouse clicks to be 00 at bottom left corner
+                //     // this stays ase gpu bc mouse coords normalize
+                //     // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
+                //     // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
+                //     //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+                    
+                //     let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
+                //                             ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
+                //     // println!("{}, {}", x_norm, y_norm);
+
+                //     // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
+                //     let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
+                //     // expecting inputs in screen space, not 0 to one so we multiply by camera size
+                //     // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
+                //     //println!("{}, {}, {}", q, r, s);
+
+                //     println!("{} {}", x_norm, y_norm);
+                //     println!("{} {} {}", q, r, s);
                     
 
-                    hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
+                //     hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
 
-                    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+                //     gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+                // }
+
+                
+                
+                // input.next_frame();
+                // sprites.set_camera(&gpu, &camera);
+                
+                // let length = sprites.get_sprites(0).len(); // maybe only some of them instead of all?
+                // sprites.refresh_sprites(&gpu, 0, 0..length);
+                // let length = sprites.get_sprites(1).len();
+                // sprites.refresh_sprites(&gpu, 1, 0..length);
+                // let length = sprites.get_sprites(2).len();
+                // sprites.refresh_sprites(&gpu, 2, 0..length);
                 }
-
-                
-                
-                input.next_frame();
-                sprites.set_camera(&gpu, &camera);
-                
-                let length = sprites.get_sprites(0).len(); // maybe only some of them instead of all?
-                sprites.refresh_sprites(&gpu, 0, 0..length);
-                let length = sprites.get_sprites(1).len();
-                sprites.refresh_sprites(&gpu, 1, 0..length);
-                let length = sprites.get_sprites(2).len();
-                sprites.refresh_sprites(&gpu, 2, 0..length);
 
 
                 // ... All the 3d drawing code/render pipeline/queue/frame stuff goes here ...
