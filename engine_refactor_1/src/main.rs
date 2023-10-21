@@ -24,45 +24,52 @@ use chickenwire::coordinate;
 
 mod gamemap;
 
-enum GameState {    //The bool indicates if the state needs to be initialized (true for yes)
+enum GameMode {    //The bool indicates if the state needs to be initialized (true for yes)
     MainMenu(bool),
     MapCreator(bool),
     WarGame(bool),
     GameOver(bool, usize) //Usize indiciate which player won (1 or 2)
 }
 
-fn initalizeMapCreator(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
-    texture:wgpu::Texture, sprites:&mut spriterenderer::SpriteRenderer, global_tile: &mut tile::Tile) {
+struct GameState {
+    game_mode: GameMode,
+    hexgrid: HexGrid<tile::Tile>,
+    player1_units: Vec<units::Unit>,
+    player2_units: Vec<units::Unit>,
+    global_tile: tile::Tile,
+}
+
+fn initalizeMapCreator(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, texture:wgpu::Texture, 
+    sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
 
     sprites.add_sprite_group(&gpu, texture, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
     // Resverve extra space for each sprite sheet thing. LIke 1024 for the hex map and 1024 for the units, etc.
     // TODO: Make function to calculate size of hexgrid instead of 1024 above. Can also reallocate dymanically
 
     const TILE_NUM : usize = 1024;
-    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+    gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     sprites.refresh_sprites(&gpu, 0, 0..TILE_NUM);
 
-    *global_tile = Tile::new(tile::Terrain::Forest);
-
+    game_state.global_tile = Tile::new(tile::Terrain::Forest);
 }
 
-fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
-    sprites:&mut spriterenderer::SpriteRenderer, global_tile: &mut tile::Tile, game_state:&mut GameState) {
+fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
+    sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
     
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key1) {
-        *global_tile = Tile::new(tile::Terrain::Plain);
+        game_state.global_tile = Tile::new(tile::Terrain::Plain);
         println!("{}", "PLAINS");
     }
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key4) {
-        *global_tile = Tile::new(tile::Terrain::Mountain);
+        game_state.global_tile = Tile::new(tile::Terrain::Mountain);
         println!("{}", "MOUNTAIN");
     }
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key2) {
-        *global_tile = Tile::new(tile::Terrain::Coast);
+        game_state.global_tile = Tile::new(tile::Terrain::Coast);
         println!("{}", "COAST");
     }
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key3) {
-        *global_tile = Tile::new(tile::Terrain::Forest);
+        game_state.global_tile = Tile::new(tile::Terrain::Forest);
         println!("{}", "FOREST");
     }
     if input.is_key_down(winit::event::VirtualKeyCode::W) {
@@ -79,7 +86,7 @@ fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gp
     }
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::P) {
-        *game_state = GameState::WarGame(true);
+        game_state.game_mode = GameMode::WarGame(true);
     }
 
     // if input.is_key_down(winit::event::VirtualKeyCode::P) {
@@ -94,12 +101,12 @@ fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gp
     // }
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::M) {
-        gamemap::save_hexgrid(&hexgrid);
+        gamemap::save_hexgrid(&game_state.hexgrid);
     }
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::L) {
-        gamemap::load_hexgrid(hexgrid);
-        gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+        gamemap::load_hexgrid(&mut game_state.hexgrid);
+        gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     }
 
     
@@ -128,9 +135,9 @@ fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gp
         println!("{} {} {}", q, r, s);
         
 
-        hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), *global_tile);
+        game_state.hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), game_state.global_tile);
 
-        gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+        gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     }
     
     
@@ -146,40 +153,34 @@ fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gp
 
 }
 
-fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
-    texture0:wgpu::Texture, texture1:wgpu::Texture, texture2:wgpu::Texture, sprites:&mut spriterenderer::SpriteRenderer, 
-    player1_units:&mut Vec<units::Unit>, player2_units:&mut Vec<units::Unit>) {
-
-    let mut p1_units = vec![];
-    let mut p2_units = vec![];
+fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sprite_sheet0: wgpu::Texture, 
+    sprite_sheet1: wgpu::Texture, sprite_sheet2: wgpu::Texture, sprites:&mut spriterenderer::SpriteRenderer,  game_state:&mut GameState) {
 
     let tank1 = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0));
     let tank2 = units::Unit::tank(coordinate::MultiCoord::force_cube(5, -1, -4));
 
-    p1_units.push(tank1);
-    p1_units.push(tank2);
+    game_state.player1_units.push(tank1);
+    game_state.player1_units.push(tank2);
 
     let tank3 = units::Unit::tank(coordinate::MultiCoord::force_cube(-7, 0, 7));
     let tank4 = units::Unit::tank(coordinate::MultiCoord::force_cube(-8, 0, 8));
 
-    p2_units.push(tank3);
-    p2_units.push(tank4);
-
-    *player1_units = p1_units;
-    *player2_units = p2_units;
+    game_state.player2_units.push(tank3);
+    game_state.player2_units.push(tank4);
 
 
-    sprites.add_sprite_group(&gpu, texture0, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
-    sprites.add_sprite_group(&gpu, texture1, vec![GPUSprite::zeroed(); 1024]);   // 1 is player 1 units
-    sprites.add_sprite_group(&gpu, texture2, vec![GPUSprite::zeroed(); 1024]);   // 2 is player 2 units
+
+    sprites.add_sprite_group(&gpu, sprite_sheet0, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
+    sprites.add_sprite_group(&gpu, sprite_sheet1, vec![GPUSprite::zeroed(); 1024]);   // 1 is player 1 units
+    sprites.add_sprite_group(&gpu, sprite_sheet2, vec![GPUSprite::zeroed(); 1024]);   // 2 is player 2 units
     // Resverve extra space for each sprite sheet thing. LIke 1024 for the hex map and 1024 for the units, etc.
     // TODO: Make function to calculate size of hexgrid instead of 1024 above. Can also reallocate dymanically
 
     const TILE_NUM : usize = 1024; // usize is the type representing the offset in memory (32 on 32 bit systems, 64 on 64 etc. )
     // gpu.queue.write_buffer(&buffer_camera, 0, bytemuck::bytes_of(&camera));
-    gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
-    gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
-    gamemap::units_to_sprites(&camera, &player2_units, sprites.get_sprites_mut(2));
+    gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
+    gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
+    gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
     sprites.refresh_sprites(&gpu, 0, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 1, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 2, 0..TILE_NUM);
@@ -187,8 +188,8 @@ fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, hexgri
 }
 
 
-fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, hexgrid:&mut HexGrid<tile::Tile>, 
-    sprites:&mut spriterenderer::SpriteRenderer, player1_units:&mut[units::Unit], player2_units:&mut[units::Unit], game_state:&mut GameState) {
+fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
+    sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
     
     if input.is_key_down(winit::event::VirtualKeyCode::W) {
         camera.screen_pos[1] += 10.0;
@@ -204,20 +205,20 @@ fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpupr
     }
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::P) {
-        *game_state = GameState::MapCreator(true);
+        game_state.game_mode = GameMode::MapCreator(true);
     }
 
 
 
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::Z) {
-        player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
-        gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+        game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
+        gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
         println!("{}", "moved")
     }
     if input.is_key_pressed(winit::event::VirtualKeyCode::X) {
-        player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
-        gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
+        game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
+        gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
         println!("{}", "moved")
     }
 
@@ -226,8 +227,8 @@ fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpupr
     // }
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::L) {
-        gamemap::load_hexgrid(hexgrid);
-        gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
+        gamemap::load_hexgrid(&mut game_state.hexgrid);
+        gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     }
 
     
@@ -286,7 +287,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     let (texture2, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
     
     let mut input = input::Input::default();
-    let mut hexgrid = gamemap::create_hexgrid();
+    // let mut hexgrid = gamemap::create_hexgrid();
 
     let mut camera = gpuprops::GPUCamera {
         screen_pos: [0.0, 0.0],
@@ -299,28 +300,20 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
     const SIM_DT : f32 = 1.0/60.0; // 60 simulation steps per second
 
     
-    
-
-    
-
-    
-
-    
 
     // Special Global Variables
-    let mut game_state = GameState::MapCreator(true);
-
-    // Main Menu
-
-    // Map Creator
-    let mut global_tile = Tile::new(tile::Terrain::Plain);
-
-    // War Game
-    let mut player1_units = vec![];
-    let mut player2_units = vec![];
-
-    // Game Over
+    // let mut game_mode = GameMode::MapCreator(true);
+    // let mut global_tile = Tile::new(tile::Terrain::Plain);
+    // let mut player1_units = vec![];
+    // let mut player2_units = vec![];
     
+    let mut game_state = GameState {
+        game_mode: GameMode::MapCreator(true),
+        hexgrid: gamemap::create_hexgrid(),
+        player1_units: Vec::new(),
+        player2_units: Vec::new(),
+        global_tile: Tile::new(tile::Terrain::Plain),
+    };
 
     
     
@@ -357,39 +350,40 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 while acc >= SIM_DT {
                     
                     // Handle Updating Game
-                    match game_state {
-                        GameState::MainMenu(needs_initialization) => {
+                    match game_state.game_mode {
+                        GameMode::MainMenu(needs_initialization) => {
                             if needs_initialization { 
                                 /*initialize*/ 
-                                game_state = GameState::MainMenu(false) 
+                                game_state.game_mode = GameMode::MainMenu(false) 
                             }
                             // Handle main menu
                         }
-                        GameState::MapCreator(needs_initialization) => {
+                        GameMode::MapCreator(needs_initialization) => {
                             if needs_initialization { 
                                 // println!("Initializing");
                                 let (texture_sheet, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
-                                initalizeMapCreator(&gpu, &mut camera, &mut hexgrid, texture_sheet, &mut sprites, &mut global_tile);
-                                game_state = GameState::MapCreator(false) 
+                                initalizeMapCreator(&gpu, &mut camera, texture_sheet, &mut sprites, &mut game_state);
+                                game_state.game_mode = GameMode::MapCreator(false) 
                             }
                             println!("Updating Map");
-                            updateMapCreator(&gpu, &mut input, &mut camera, &mut hexgrid, &mut sprites, &mut global_tile, &mut game_state);
+                            updateMapCreator(&gpu, &mut input, &mut camera, &mut sprites, &mut game_state);
                         }
-                        GameState::WarGame(needs_initialization) => {
+                        GameMode::WarGame(needs_initialization) => {
                             if needs_initialization { 
                                 let (texture_sheet0, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 let (texture_sheet1, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 let (texture_sheet2, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
-                                initalizeWarGame(&gpu, &mut camera, &mut hexgrid, texture_sheet0, texture_sheet1, texture_sheet2, &mut sprites, &mut player1_units, &mut player2_units);
-                                game_state = GameState::WarGame(false) 
+                                // let sprite_steets = vec![texture_sheet0, texture_sheet1, texture_sheet2];
+                                initalizeWarGame(&gpu, &mut camera, texture_sheet0, texture_sheet1, texture_sheet2, &mut sprites, &mut game_state);
+                                game_state.game_mode = GameMode::WarGame(false) 
                             }
                             println!("Updating War");
-                            updateWarGame(&gpu, &mut input, &mut camera, &mut hexgrid, &mut sprites, &mut player1_units, &mut player2_units, &mut game_state);
+                            updateWarGame(&gpu, &mut input, &mut camera, &mut sprites, &mut game_state);
                         }
-                        GameState::GameOver(needs_initialization, winner) => {
+                        GameMode::GameOver(needs_initialization, winner) => {
                             if needs_initialization { 
                                 /*initialize*/ 
-                                game_state = GameState::GameOver(false, 0) 
+                                game_state.game_mode = GameMode::GameOver(false, 0) 
                             }
                             // Handle main menu
                         }
