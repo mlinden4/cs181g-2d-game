@@ -277,6 +277,15 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
                     println!("{} {}", x_norm, y_norm);
                     println!("{} {} {}", q, r, s);
+
+                    /*
+                        let clicked_unit = unitgrid.remove(placeholder_coord).unwrap();
+                        if input.is_mouse_pressed(winit::event::MouseButton::Left) {
+                            // get new coord
+                            let dest_coord = MultiCoord::default();
+                            clicked_unit.move_unit(dest_coord, &mut hexgrid,  &mut unitgrid)
+                        }
+                     */
                     
 
                     hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), global_tile);
