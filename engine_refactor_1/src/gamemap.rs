@@ -6,6 +6,7 @@ use chickenwire::hexgrid::HexGrid;
 use chickenwire::coordinate;
 use crate::tile;
 use crate::tile::Terrain;
+use std::path::PathBuf;
 
 use std::fs;
 use std::io;
@@ -148,7 +149,16 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
         }
     }
 
-    let file_path = "./content/".to_string() + &file_name + ".map";
+    let mut path = PathBuf::new();
+
+    path.push("./content");
+    path.push(file_name.trim());
+
+    path.set_extension("map");
+
+    // let file_path = "./content/".to_string() + &file_name + ".map";
+
+    // let map_string = fs::read(path);
 
 
     let mut map_string = String::new();
@@ -174,7 +184,7 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
     }
 
     // Attempt to write the content to the file
-    if let Err(e) = fs::write(file_path, map_string) {
+    if let Err(e) = fs::write(path, map_string) {
         eprintln!("Error writing to file: {}", e);
     } else {
         println!("File created successfully.");
@@ -196,9 +206,16 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
         }
     }
 
-    let file_path = "./content/".to_string() + &file_name + ".map";
+    let mut path = PathBuf::new();
 
-    let map_string = fs::read_to_string(file_path)?;
+    path.push("./content");
+    path.push(file_name.trim());
+
+    path.set_extension("map");
+
+    // let file_path = "./content/".to_string() + &file_name + ".map";
+
+    let map_string = fs::read(path).unwrap();
 
 
     let mut new_hexgrid = create_hexgrid();
@@ -209,7 +226,7 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
             for s in -hexgrid_radius..=hexgrid_radius {
                 if q + r + s == 0 {
                     
-                    match map_string.as_bytes()[idx_counter] {
+                    match map_string[idx_counter] {
                         b'C' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Coast)) },
                         b'P' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Plain))},
                         b'M' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Mountain))},
