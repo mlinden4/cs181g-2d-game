@@ -152,6 +152,9 @@ pub fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mu
 pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sprite_sheet0: wgpu::Texture, 
     sprite_sheet1: wgpu::Texture, sprite_sheet2: wgpu::Texture, sprites:&mut spriterenderer::SpriteRenderer,  game_state:&mut GameState) {
 
+    game_state.player1_units = Vec::default();
+    game_state.player2_units = Vec::default();
+
     let tank1 = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0));
     let tank2 = units::Unit::tank(coordinate::MultiCoord::force_cube(5, -1, -4));
 
