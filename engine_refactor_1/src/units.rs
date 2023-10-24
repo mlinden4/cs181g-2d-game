@@ -6,6 +6,7 @@ use crate::tile::Tile;
 use chickenwire::coordinate;
 use chickenwire::prelude::HexGrid;
 
+#[derive(PartialEq)]
 pub struct Unit {
     pub name: String,
     hp: usize,

@@ -24,10 +24,10 @@ use chickenwire::coordinate;
 
 mod gamemap;
 
-enum GameMode {    //The bool indicates if the state needs to be initialized (true for yes)
+enum GameMode {    //The 1st bool indicates if the state needs to be initialized (true for yes)
     MainMenu(bool),
     MapCreator(bool),
-    WarGame(bool),
+    WarGame(bool, usize),  //Usize indicates which player's turn it is (1 or 2)
     GameOver(bool, usize) //Usize indiciate which player won (1 or 2)
 }
 
@@ -37,6 +37,7 @@ struct GameState {
     player1_units: Vec<units::Unit>,
     player2_units: Vec<units::Unit>,
     global_tile: tile::Tile,
+    moving_unit_location: Option<coordinate::MultiCoord>, // Which unit list, which index, which unit
 }
 
 fn initalizeMapCreator(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, texture:wgpu::Texture, 
@@ -51,6 +52,8 @@ fn initalizeMapCreator(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, tex
     sprites.refresh_sprites(&gpu, 0, 0..TILE_NUM);
 
     game_state.global_tile = Tile::new(tile::Terrain::Forest);
+    game_state.moving_unit_location= None;
+    game_state.game_mode = GameMode::MapCreator(false);
 }
 
 fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
@@ -86,7 +89,7 @@ fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gp
     }
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::P) {
-        game_state.game_mode = GameMode::WarGame(true);
+        game_state.game_mode = GameMode::WarGame(true, 1);
     }
 
     // if input.is_key_down(winit::event::VirtualKeyCode::P) {
@@ -168,8 +171,6 @@ fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sprite
     game_state.player2_units.push(tank3);
     game_state.player2_units.push(tank4);
 
-
-
     sprites.add_sprite_group(&gpu, sprite_sheet0, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
     sprites.add_sprite_group(&gpu, sprite_sheet1, vec![GPUSprite::zeroed(); 1024]);   // 1 is player 1 units
     sprites.add_sprite_group(&gpu, sprite_sheet2, vec![GPUSprite::zeroed(); 1024]);   // 2 is player 2 units
@@ -185,8 +186,10 @@ fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sprite
     sprites.refresh_sprites(&gpu, 1, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 2, 0..TILE_NUM);
 
-}
+    game_state.moving_unit_location= None;
+    game_state.game_mode = GameMode::WarGame(false, 1); //Player 1's turn is first
 
+}
 
 fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
     sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
@@ -208,19 +211,16 @@ fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpupr
         game_state.game_mode = GameMode::MapCreator(true);
     }
 
-
-
-
-    if input.is_key_pressed(winit::event::VirtualKeyCode::Z) {
-        game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
-        gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
-        println!("{}", "moved")
-    }
-    if input.is_key_pressed(winit::event::VirtualKeyCode::X) {
-        game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
-        gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
-        println!("{}", "moved")
-    }
+    // if input.is_key_pressed(winit::event::VirtualKeyCode::Z) {
+    //     game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
+    //     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
+    //     println!("{}", "moved")
+    // }
+    // if input.is_key_pressed(winit::event::VirtualKeyCode::X) {
+    //     game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
+    //     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
+    //     println!("{}", "moved")
+    // }
 
     // if input.is_key_pressed(winit::event::VirtualKeyCode::M) {
     //     gamemap::save_hexgrid(&hexgrid);
@@ -231,36 +231,141 @@ fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpupr
         gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     }
 
-    
 
-
-    // if input.is_mouse_down(winit::event::MouseButton::Left) {
-    //     // TODO screen -> multicord needed
-    //     let mouse_pos = input.mouse_pos();
-    //     // Normalize mouse clicks to be 00 at bottom left corner
-    //     // this stays ase gpu bc mouse coords normalize
-    //     // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
-    //     // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
-    //     //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
+    if input.is_mouse_down(winit::event::MouseButton::Left) {
+        // TODO screen -> multicord needed
+        let mouse_pos = input.mouse_pos();
+        // Normalize mouse clicks to be 00 at bottom left corner
+        // this stays ase gpu bc mouse coords normalize
+        // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
+        // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
+        //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
         
-    //     let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
-    //                             ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
-    //     // println!("{}, {}", x_norm, y_norm);
+        let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
+                                ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
 
-    //     // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
-    //     let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
-    //     // expecting inputs in screen space, not 0 to one so we multiply by camera size
-    //     // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
-    //     //println!("{}, {}, {}", q, r, s);
+        // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
+        let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
 
-    //     println!("{} {}", x_norm, y_norm);
-    //     println!("{} {} {}", q, r, s);
+        println!("{} {} {}", q, r, s);
+
+
+        let clicked_coord = coordinate::MultiCoord::force_cube(q, r, s);
+
+        // If there is a unit in moving unit, handle that
+        if let Some(from_location) = game_state.moving_unit_location {
+            if let GameMode::WarGame(_, 1) = game_state.game_mode {
+                // If player 1, see if spot is available. If so move old unit there, and remove moving unit
+                // If not empty, if in player1_units list, set the moving unit to that unit
+                // If not empty, if in player2_units list, remove moving unit and do nothing (or something later on)
+                let mut space_occupied = false;
+                
+                // Handle player 1 units
+                for unit in &game_state.player1_units {
+                    if unit.location == clicked_coord {
+                        game_state.moving_unit_location = Some(unit.location);
+                        space_occupied = true;
+                        break;
+                    }
+                }
+
+                // Handle player 2 units
+                if !space_occupied {
+                    for unit in &game_state.player2_units {
+                        if unit.location == clicked_coord {
+                            game_state.moving_unit_location = None;
+                            space_occupied = true;
+                            break;
+                        }
+                    }
+                }
+
+                // After looking through all units, no unit is there
+                if !space_occupied {
+                    for mut unit in &mut game_state.player1_units {
+                        if unit.location == from_location {
+                            unit.location = clicked_coord;
+                            game_state.moving_unit_location = None;
+                            break;
+                        }
+                    }
+                    gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
+                    game_state.game_mode = GameMode::WarGame(false, 2);   // Switch play to player 2
+                }
+
+                
+
+            } else if let GameMode::WarGame(_, 2) = game_state.game_mode {
+                // If player 2, search player2 units for matching multichoord
+                // If a match, set it to the moving unit
+                let mut space_occupied = false;
+                
+                // Handle player 2 units
+                for unit in &game_state.player2_units {
+                    if unit.location == clicked_coord {
+                        game_state.moving_unit_location = Some(unit.location);
+                        space_occupied = true;
+                        break;
+                    }
+                }
+
+                // Handle player 1 units
+                if !space_occupied {
+                    for unit in &game_state.player1_units {
+                        if unit.location == clicked_coord {
+                            // Do nothing
+                            game_state.moving_unit_location = None;
+                            space_occupied = true;
+                            break;
+                        }
+                    }
+                }
+
+                // After looking through all units, no unit is there
+                if !space_occupied {
+                    for mut unit in &mut game_state.player2_units {
+                        if unit.location == from_location {
+                            unit.location = clicked_coord;
+                            game_state.moving_unit_location = None;
+                            break;
+                        }
+                    }
+                    gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
+                    game_state.game_mode = GameMode::WarGame(false, 1);   //Switch play to player 1
+                }
+
+                
+            }
+
+        // Otherwise, handle potentially selecting a new unit
+        } else {
+            if let GameMode::WarGame(_, 1) = game_state.game_mode {
+                // If player 1, search player1 units for matching multichoord
+                // If a match, set it to the moving unit
+                for unit in &game_state.player1_units {
+                    if unit.location == clicked_coord {
+                        game_state.moving_unit_location = Some(unit.location);
+                        break;
+                    }
+                }
+
+            } else if let GameMode::WarGame(_, 2) = game_state.game_mode {
+                // If player 2, search player2 units for matching multichoord
+                // If a match, set it to the moving unit
+                for unit in &game_state.player2_units {
+                    if unit.location == clicked_coord {
+                        game_state.moving_unit_location = Some(unit.location);
+                        break;
+                    }
+                }
+            }
+        }
         
 
-    //     hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), *global_tile);
+        // game_state.hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), game_state.global_tile);
 
-    //     gamemap::hexgrid_to_sprites(&camera, &hexgrid, sprites.get_sprites_mut(0));
-    // }
+        // gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
+    }
     
     sprites.set_camera(&gpu, &camera);
     
@@ -313,11 +418,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         player1_units: Vec::new(),
         player2_units: Vec::new(),
         global_tile: Tile::new(tile::Terrain::Plain),
+        moving_unit_location: None::<coordinate::MultiCoord>,
     };
-
-    
-    
-    
 
 
     event_loop.run(move |event, _, control_flow| {
@@ -363,19 +465,17 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                 // println!("Initializing");
                                 let (texture_sheet, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 initalizeMapCreator(&gpu, &mut camera, texture_sheet, &mut sprites, &mut game_state);
-                                game_state.game_mode = GameMode::MapCreator(false) 
                             }
                             println!("Updating Map");
                             updateMapCreator(&gpu, &mut input, &mut camera, &mut sprites, &mut game_state);
                         }
-                        GameMode::WarGame(needs_initialization) => {
+                        GameMode::WarGame(needs_initialization, _) => {
                             if needs_initialization { 
                                 let (texture_sheet0, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 let (texture_sheet1, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 let (texture_sheet2, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 // let sprite_steets = vec![texture_sheet0, texture_sheet1, texture_sheet2];
                                 initalizeWarGame(&gpu, &mut camera, texture_sheet0, texture_sheet1, texture_sheet2, &mut sprites, &mut game_state);
-                                game_state.game_mode = GameMode::WarGame(false) 
                             }
                             println!("Updating War");
                             updateWarGame(&gpu, &mut input, &mut camera, &mut sprites, &mut game_state);
