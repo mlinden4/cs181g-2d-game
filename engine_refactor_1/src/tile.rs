@@ -6,7 +6,7 @@ use winit::event::VirtualKeyCode;
 
 use crate::gpuprops::GPUSprite;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Terrain {
     Coast,
     Plain,
@@ -14,6 +14,7 @@ pub enum Terrain {
     Forest
 }
 
+#[derive(PartialEq)]
 pub struct TerrainModifier {
     pub terrain_type: Terrain,
     pub movement: usize,
