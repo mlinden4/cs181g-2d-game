@@ -148,7 +148,7 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
         }
     }
 
-    let file_path = "./content/".to_string() + &file_name + ".txt";
+    let file_path = "./content/".to_string() + &file_name + ".map";
 
 
     let mut map_string = String::new();
@@ -196,7 +196,7 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
         }
     }
 
-    let file_path = "./content/".to_string() + &file_name + ".txt";
+    let file_path = "./content/".to_string() + &file_name + ".map";
 
     let map_string = fs::read_to_string(file_path)?;
 
