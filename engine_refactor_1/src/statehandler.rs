@@ -61,7 +61,7 @@ pub fn initalizeMainMenu(gpu:&wgpuimpl::WGPU, window:&Window, text_renders:&mut 
         const from_width:f32 = 1.0/7.0; //448 x 64
         const from_height:f32 = 1.0;
 
-        let mut main_menu_sprites: [GPUSprite; 2] = [
+        let mut main_menu_sprites: Vec<GPUSprite> = vec![
             GPUSprite {     // Mountain map
                 to_region: [1075.0, 325.0, size, size],
                 from_region: [0.0*from_x, from_y, from_width, from_height],
@@ -73,13 +73,7 @@ pub fn initalizeMainMenu(gpu:&wgpuimpl::WGPU, window:&Window, text_renders:&mut 
             
         ];
 
-        sprites.add_sprite_group(&gpu, texture, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
-        // sprites.add_sprite_group(&gpu, texture, main_menu_sprites);
-        
-        println!("here");
-        let mut mm_sprites = sprites.get_sprites_mut(0);
-        mm_sprites[0] = main_menu_sprites[0];
-        mm_sprites[1] = main_menu_sprites[1];
+        sprites.add_sprite_group(&gpu, texture, main_menu_sprites);
 
         let length = sprites.get_sprites(0).len(); 
         sprites.refresh_sprites(&gpu, 0, 0..length);
@@ -99,7 +93,7 @@ pub fn initalizeMainMenu(gpu:&wgpuimpl::WGPU, window:&Window, text_renders:&mut 
 pub fn updateMainMenu(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
     text_renders:&mut TextRenderList, sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
 
-        println!("hi from mm");
+        // println!("hi from mm");
         if input.is_key_pressed(winit::event::VirtualKeyCode::G) {
             text_renders.clear_text_render();
             game_state.game_mode = GameMode::WarGame(true, 1);
@@ -300,6 +294,18 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
         return;
     }
 
+    if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
+        sprites.clear_sprite_groups();
+        game_state.game_mode = GameMode::GameOver(true, 1);
+        return;
+    }
+
+    if input.is_key_down(winit::event::VirtualKeyCode::Key2) {
+        sprites.clear_sprite_groups();
+        game_state.game_mode = GameMode::GameOver(true, 2);
+        return;
+    }
+
     // if input.is_key_pressed(winit::event::VirtualKeyCode::Z) {
     //     game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
     //     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
@@ -467,3 +473,42 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
     sprites.refresh_sprites(&gpu, 2, 0..length);
 
 }
+
+pub fn initalizeGameOver(gpu:&wgpuimpl::WGPU, window:&Window, text_renders:&mut TextRenderList, camera:&mut gpuprops::GPUCamera, 
+    sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
+
+        text_renders.clear_text_render();
+        sprites.clear_sprite_groups();
+        sprites.set_camera(&gpu, &camera);
+
+        let mut winner_num = 0;
+
+        if let GameMode::GameOver(_, 1) = game_state.game_mode {
+            winner_num = 1;
+        }
+        if let GameMode::GameOver(_, 2) = game_state.game_mode {
+            winner_num = 2;
+        }
+
+        let winner_string = format!("Player {} wins!", winner_num);
+
+        text_renders.prepare_text_render(&gpu, &window, "Game Over!", 400.0, 100.0, 5.0, Color::rgb(255, 255, 255));
+        text_renders.prepare_text_render(&gpu, &window, &winner_string, 600.0, 300.0, 2.0, Color::rgb(255, 255, 255));
+        text_renders.prepare_text_render(&gpu, &window, "Return to main menu", 525.0, 600.0, 2.0, Color::rgb(255, 255, 255));
+        text_renders.prepare_text_render(&gpu, &window, "Press [Esc]", 665.0, 700.0, 1.5, Color::rgb(255, 255, 255));
+
+        game_state.game_mode = GameMode::GameOver(false, winner_num);
+
+    }
+
+    pub fn updateGameOver(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
+        text_renders:&mut TextRenderList, sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
+    
+            // println!("hi from mm");
+            if input.is_key_pressed(winit::event::VirtualKeyCode::Escape) {
+                text_renders.clear_text_render();
+                game_state.game_mode = GameMode::MainMenu(true);
+                return;
+            }
+        }
+

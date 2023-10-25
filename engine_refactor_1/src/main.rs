@@ -139,10 +139,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                         }
                         statehandler::GameMode::GameOver(needs_initialization, winner) => {
                             if needs_initialization { 
-                                /*initialize*/ 
-                                game_state.game_mode = statehandler::GameMode::GameOver(false, 0) 
+                                statehandler::initalizeGameOver(&gpu, &window, &mut text_renders, &mut camera, &mut sprites, &mut game_state);
                             }
-                            // Handle main menu
+                            statehandler::updateGameOver(&gpu, &mut input, &mut camera, &mut text_renders, &mut sprites, &mut game_state);
                         }
                     }
 
