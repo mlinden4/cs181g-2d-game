@@ -103,16 +103,33 @@ impl Unit {
     }
 
     pub fn inrange(&self, destination: coordinate::MultiCoord, grid: &HexGrid<Tile>) -> bool {
-        let is_occupied = grid.get(destination).unwrap().is_occupied();
-        if !is_occupied {
-            let origin_cube =self.location.to_cube().unwrap();
-            let dest_cube = destination.to_cube().unwrap();
-            let dist = origin_cube.dist(dest_cube);
+        // do not need to check for occupied, already done in statehandler
+        let origin_cube =self.location.to_cube().unwrap();
+        let dest_cube = destination.to_cube().unwrap();
+        let dist = origin_cube.dist(dest_cube);
 
-            dist <= self.movement as i32
-        } else {
-            false
+        print!("{}", dist);
+
+        if dist <= self.movement as i32 {
+            if self.name != "Helicopter" {
+                return true;
+            } else {
+                return !grid.get(destination).unwrap().is_mountain(); // look at 
+            }
         }
+
+        false
+
+        // let is_occupied = grid.get(destination).unwrap().is_occupied();
+        // if !is_occupied {
+        //     let origin_cube =self.location.to_cube().unwrap();
+        //     let dest_cube = destination.to_cube().unwrap();
+        //     let dist = origin_cube.dist(dest_cube);
+
+        //     dist <= self.movement as i32
+        // } else {
+        //     false
+        // }
         // will eventually include dijkstra and terrain cost movement, will do a loop and bfs
 
 
@@ -122,8 +139,8 @@ impl Unit {
 
     pub fn move_unit(&mut self, destination: coordinate::MultiCoord, grid: &mut HexGrid<Tile>) {
         if self.inrange(destination, grid) {
-            grid.get_mut(self.location).unwrap().set_empty(); // set original tile as empty
-            grid.get_mut(destination).unwrap().set_occupied(); // set new tile to occupied
+            // grid.get_mut(self.location).unwrap().set_empty(); // set original tile as empty
+            // grid.get_mut(destination).unwrap().set_occupied(); // set new tile to occupied
             self.location = destination
         }
     }
