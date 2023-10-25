@@ -13,6 +13,11 @@ use crate::spriterenderer;
 use crate::wgpuimpl;
 use crate::input;
 
+use winit::window::Window;
+// mod textrenderer;
+use crate::textrenderer::TextRenderList;
+use glyphon::Color;
+
 use crate::gamemap;
 use gamemap::*;
 
@@ -32,6 +37,70 @@ pub struct GameState {
     pub global_tile: tile::Tile,
     pub moving_unit_location: Option<coordinate::MultiCoord>, // Which unit list, which index, which unit
 }
+
+
+
+pub fn initalizeMainMenu(gpu:&wgpuimpl::WGPU, window:&Window, text_renders:&mut TextRenderList, camera:&mut gpuprops::GPUCamera, texture:wgpu::Texture, 
+    sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
+
+        text_renders.clear_text_render();
+
+        text_renders.prepare_text_render(&gpu, &window, "Main Menu", 450.0, 100.0, 5.0, Color::rgb(255, 255, 255));
+        text_renders.prepare_text_render(&gpu, &window, "War Game", 200.0, 400.0, 3.0, Color::rgb(255, 255, 255));
+        text_renders.prepare_text_render(&gpu, &window, "Map Maker", 1000.0, 400.0, 3.0, Color::rgb(255, 255, 255));
+        text_renders.prepare_text_render(&gpu, &window, "Press [W]", 300.0, 550.0, 1.5, Color::rgb(255, 255, 255));
+        text_renders.prepare_text_render(&gpu, &window, "Press [M]", 1125.0, 550.0, 1.5, Color::rgb(255, 255, 255));
+
+
+        const size:f32 = 64.0;
+    
+        const from_x:f32 = 1.0/7.0;
+        const from_y:f32 = 0.0;
+        const from_width:f32 = 1.0/7.0; //448 x 64
+        const from_height:f32 = 1.0;
+
+        let mut main_menu_sprites: Vec<GPUSprite> = vec![
+            GPUSprite {     // Mountain map
+                to_region: [100.0, 100.0, size, size],
+                from_region: [0.0*from_x, from_y, from_width, from_height],
+            },
+            GPUSprite {     // Tank unit
+                to_region: [200.0, 200.0, size, size],
+                from_region: [5.0*from_x, from_y, from_width, from_height],
+            },
+            
+        ];
+
+        sprites.add_sprite_group(&gpu, texture, main_menu_sprites);
+        let length = sprites.get_sprites(0).len(); 
+        println!("{}",length);
+        sprites.refresh_sprites(&gpu, 0, 0..length);
+                                                                                                  
+
+        *game_state = GameState {
+            game_mode: GameMode::MainMenu(false),
+            hexgrid: gamemap::create_hexgrid(),
+            player1_units: Vec::new(),
+            player2_units: Vec::new(),
+            global_tile: Tile::new(tile::Terrain::Plain),
+            moving_unit_location: None::<coordinate::MultiCoord>,
+        };
+
+    }
+
+pub fn updateMainMenu(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
+    sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
+
+        println!("hi from mm");
+        if input.is_key_pressed(winit::event::VirtualKeyCode::W) {
+            game_state.game_mode = GameMode::WarGame(true);
+        }
+        if input.is_key_pressed(winit::event::VirtualKeyCode::M) {
+            game_state.game_mode = GameMode::MapCreator(true);
+        }
+
+    }
+
 
 pub fn initalizeMapCreator(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, texture:wgpu::Texture, 
     sprites:&mut spriterenderer::SpriteRenderer, game_state:&mut GameState) {
@@ -83,6 +152,10 @@ pub fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mu
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::P) {
         game_state.game_mode = GameMode::WarGame(true, 1);
+    }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Escape) {
+        game_state.game_mode = GameMode::MainMenu(true);
     }
 
     // if input.is_key_down(winit::event::VirtualKeyCode::P) {
@@ -182,7 +255,7 @@ pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sp
     sprites.refresh_sprites(&gpu, 1, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 2, 0..TILE_NUM);
 
-    game_state.moving_unit_location= None;
+    game_state.moving_unit_location = None;
     game_state.game_mode = GameMode::WarGame(false, 1); //Player 1's turn is first
 
 }
@@ -205,6 +278,10 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::P) {
         game_state.game_mode = GameMode::MapCreator(true);
+    }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Escape) {
+        game_state.game_mode = GameMode::MainMenu(true);
     }
 
     // if input.is_key_pressed(winit::event::VirtualKeyCode::Z) {
