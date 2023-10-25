@@ -114,7 +114,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                 let (texture_sheet, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 statehandler::initalizeMainMenu(&gpu, &window, &mut text_renders, &mut camera, texture_sheet, &mut sprites, &mut game_state);
                             }
-                            statehandler::updateMainMenu(&gpu, &mut input, &mut camera, &mut sprites, &mut game_state);
+                            statehandler::updateMainMenu(&gpu, &mut input, &mut camera, &mut text_renders, &mut sprites, &mut game_state);
                             // Handle main menu
                         }
                         statehandler::GameMode::MapCreator(needs_initialization) => {
@@ -150,7 +150,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     // Otherwise you'll see several frames in a row where a key was just pressed/released.
                     
                     input.next_frame();
-
                     acc -= SIM_DT;
                 }
                 
@@ -190,8 +189,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 
                 gpu.queue.submit(Some(encoder.finish()));
                 frame.present();
-                text_renders.trim_atlas(); // For text display
                 window.request_redraw();
+                text_renders.trim_atlas(); // For text display
+                
 
                 // Leave now_keys alone, but copy over all changed keys
             },
