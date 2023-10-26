@@ -20,8 +20,8 @@ pub struct Itinerary {
 #[derive(PartialEq)]
 pub struct Unit {
     pub name: String,
-    max_hp: usize,
-    hp: usize,
+    pub max_hp: usize,
+    pub hp: usize,
     soft_attack: usize,
     hard_attack: usize,
     aa_damage: usize,
@@ -331,7 +331,7 @@ impl Unit {
     }
 
     // first bool is if you die, second bool is if enemy dies
-    pub fn fight(&mut self, enemy : Unit) -> (bool, bool) {
+    pub fn fight(&mut self, enemy : &mut Unit) -> (bool, bool) {
 
         // Can no longer move after fighting
         self.remaining_movement = 0;

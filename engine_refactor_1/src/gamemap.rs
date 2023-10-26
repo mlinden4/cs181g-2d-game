@@ -138,9 +138,9 @@ pub fn units_to_healthbars(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSp
 
         let (world_x_pos, world_y_pos) = hex_to_xy(camera, q as f32,r as f32,s as f32);
 
-        let health_percent = (unit.hp as f32) / (unit.map_hp as f32);
+        let health_percent = (unit.hp as f32) / (unit.max_hp as f32);
 
-        sprites[sprite_num] = new_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos, health_percent*HEX_SIZE ,HEX_SIZE);
+        sprites[sprite_num] = new_squishable_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos, health_percent*HEX_SIZE ,HEX_SIZE);
 
         sprite_num = sprite_num + 1;
     });
