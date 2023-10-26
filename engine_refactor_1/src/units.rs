@@ -9,6 +9,7 @@ use chickenwire::prelude::HexGrid;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::collections::HashMap;
+use rand::Rng;
 
 
 pub struct Itinerary {
@@ -19,7 +20,8 @@ pub struct Itinerary {
 #[derive(PartialEq, Clone)]
 pub struct Unit {
     pub name: String,
-    hp: usize,
+    pub max_hp: usize,
+    pub hp: usize,
     soft_attack: usize,
     hard_attack: usize,
     aa_damage: usize,
@@ -27,12 +29,14 @@ pub struct Unit {
     pub movement: usize,
     pub remaining_movement: usize,
     terrain_modifiers: [TerrainModifier; 4], // Three terrain modifiers
-    pub location: coordinate::MultiCoord
+    pub location: coordinate::MultiCoord,
+    pub has_fought: bool
 }
 
 impl Unit {
     fn new(
         name: String,
+        max_hp: usize,
         hp: usize,
         soft_attack: usize,
         hard_attack: usize,
@@ -40,6 +44,7 @@ impl Unit {
         defense: usize,
         movement: usize,
         location: coordinate::MultiCoord,
+        has_fought: bool,
     ) -> Self {
         // Initialize terrain modifiers for each terrain type
         let terrain_modifiers = [
@@ -68,6 +73,7 @@ impl Unit {
 
         Unit {
             name,
+            max_hp,
             hp,
             soft_attack,
             hard_attack,
@@ -76,7 +82,8 @@ impl Unit {
             movement,
             remaining_movement,
             terrain_modifiers,
-            location
+            location,
+            has_fought,
         }
     }
     pub fn tank(location: coordinate::MultiCoord) -> Self {
@@ -105,15 +112,95 @@ impl Unit {
 
         Unit {
             name: "Tank".into(),
+            max_hp: 100,
             hp: 100,
             soft_attack: 10,
             hard_attack: 15,
             aa_damage: 5,
             defense: 10,
+            movement: 3,
+            remaining_movement: 3,
+            terrain_modifiers, 
+            location: location,
+            has_fought: false
+        }
+    }
+    pub fn helicopter(location: coordinate::MultiCoord) -> Self {
+        let terrain_modifiers = [
+                TerrainModifier {
+                    terrain_type: Terrain::Plain,
+                    movement: 1,
+                    defense: 5,
+                },
+                TerrainModifier {
+                    terrain_type: Terrain::Mountain,
+                    movement: 2,
+                    defense: 1,
+                },
+                TerrainModifier {
+                    terrain_type: Terrain::Coast,
+                    movement: 1,
+                    defense: 5,
+                },
+                TerrainModifier {
+                    terrain_type: Terrain::Forest,
+                    movement: 1,
+                    defense: 3,
+                },
+            ];
+
+        Unit {
+            name: "Helicopter".into(),
+            max_hp: 50,
+            hp: 50,
+            soft_attack: 10,
+            hard_attack: 20,
+            aa_damage: 10,
+            defense: 10,
+            movement: 5,
+            remaining_movement: 5,
+            terrain_modifiers, 
+            location: location,
+            has_fought: false
+        }
+    }
+    pub fn infantry(location: coordinate::MultiCoord) -> Self {
+        let terrain_modifiers = [
+                TerrainModifier {
+                    terrain_type: Terrain::Plain,
+                    movement: 1,
+                    defense: 5,
+                },
+                TerrainModifier {
+                    terrain_type: Terrain::Mountain,
+                    movement: 2,
+                    defense: 20,
+                },
+                TerrainModifier {
+                    terrain_type: Terrain::Coast,
+                    movement: 10000,
+                    defense: 2,
+                },
+                TerrainModifier {
+                    terrain_type: Terrain::Forest,
+                    movement: 2,
+                    defense: 10,
+                },
+            ];
+
+        Unit {
+            name: "Infantry".into(),
+            max_hp: 150,
+            hp: 150,
+            soft_attack: 10,
+            hard_attack: 5,
+            aa_damage: 20,
+            defense: 10,
             movement: 2,
             remaining_movement: 2,
             terrain_modifiers, 
             location: location,
+            has_fought: false
         }
     }
 
@@ -224,13 +311,50 @@ impl Unit {
     }
     
 
-    // pub fn move_unit(&mut self, destination: coordinate::MultiCoord, grid: &mut HexGrid<Tile>) {
-    //     if self.inrange(destination, grid) {
-    //         // grid.get_mut(self.location).unwrap().set_empty(); // set original tile as empty
-    //         // grid.get_mut(destination).unwrap().set_occupied(); // set new tile to occupied
-    //         self.location = destination
-    //     }
-    // }
+    // first bool is if you die, second bool is if enemy dies
+    pub fn fight(&mut self, enemy : &mut Unit) -> (bool, bool) {
+
+        // Can no longer move after fighting
+        self.remaining_movement = 0;
+ 
+        // attacker info
+        let mut attack: usize = self.soft_attack;
+        if enemy.name == "Helicopter" {
+            attack = self.aa_damage;
+        }
+        if enemy.name == "Tank" {
+            attack = self.hard_attack
+        }
+        let mut defense = enemy.defense;
+
+        // defender counter info
+        let mut eattack: usize = enemy.soft_attack;
+        if self.name == "Helicopter" {
+            eattack = enemy.aa_damage;
+        }
+        if self.name == "Tank" {
+            eattack = enemy.hard_attack
+        }
+        let mut edefense = enemy.defense;
+
+        // Attack damage
+        let mut rng = rand::thread_rng();
+        let attack_damage_modifer: i32 = (rng.gen_range(0..100))/100;
+
+        let attack_power = (attack-defense)/defense;
+        let damage: i32 = 25 * attack_power as i32 * attack_damage_modifer;
+
+        // Defense damage
+        let defense_damage_modifer: i32 = (rng.gen_range(0..100))/100;
+
+        let defense_power = (eattack-edefense)/edefense;
+        let oof: i32 = 25 * defense_power as i32 * defense_damage_modifer;
+
+        enemy.hp -= damage;
+        self.hp -= oof;
+
+        return (self.hp == 0, enemy.hp == 0)
+    }
 
 }
  

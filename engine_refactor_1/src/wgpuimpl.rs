@@ -1,4 +1,5 @@
 use winit::window::Window;
+use wgpu::CompositeAlphaMode;
 
 #[allow(dead_code)]
 pub struct WGPU {
@@ -51,7 +52,8 @@ impl WGPU {
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: swapchain_capabilities.alpha_modes[0],
+            alpha_mode: CompositeAlphaMode::Opaque,
+            // alpha_mode: swapchain_capabilities.alpha_modes[0],
             view_formats: vec![],
         };
     
