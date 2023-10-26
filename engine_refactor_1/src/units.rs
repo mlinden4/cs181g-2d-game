@@ -402,7 +402,7 @@ impl Unit {
         // if(attack_power < 0) {
         //     attack_power = 5;
         // }
-        let damage: i32 = 25 + attack_power as i32;
+        let damage: i32 = 15 + attack_power as i32;
 
         // Defense damage
         // let defense_damage_modifer: i32 = (rng.gen_range(0..100))/100;
@@ -411,7 +411,7 @@ impl Unit {
         // if(defense_power < 0) {
         //     defense_power = 0;
         // }
-        let oof: i32 = 5 + defense_power as i32;
+        let oof: i32 = defense_power as i32;
 
         enemy.hp -= damage as i32;
         self.hp -= oof as i32;
