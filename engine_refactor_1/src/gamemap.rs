@@ -1,5 +1,6 @@
 use crate::gpuprops::GPUSprite;
 use crate::gpuprops::GPUCamera;
+use crate::statehandler::GameState;
 use crate::units::Unit;
 use chickenwire::{coordinate::cube::Cube, prelude::MultiCoord};
 use chickenwire::hexgrid::HexGrid;
@@ -7,6 +8,7 @@ use chickenwire::coordinate;
 use crate::tile;
 use crate::tile::Terrain;
 use std::path::PathBuf;
+use rand::Rng;
 
 use std::fs;
 use std::io;
@@ -94,6 +96,7 @@ pub fn units_to_sprites(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSprit
         match unit.name.as_str() {
             "Tank" => { sprite_idx_x = 5.0; sprite_idx_y = 0.0 },
             "Helicopter" => { sprite_idx_x = 6.0; sprite_idx_y = 0.0 },
+            "Infantry" => { sprite_idx_x = 7.0; sprite_idx_y = 0.0 },
             _ => { sprite_idx_x = 1.0; sprite_idx_y = 0.0; },
         }
 
@@ -137,14 +140,57 @@ pub fn units_to_healthbars(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSp
         let (q,r,s) = (unit.location.to_cube().unwrap().x(), unit.location.to_cube().unwrap().y(), unit.location.to_cube().unwrap().z());
 
         let (world_x_pos, world_y_pos) = hex_to_xy(camera, q as f32,r as f32,s as f32);
+        
+        let mut y_offset = 0.0;
+        if (unit.name == "Helicopter") {
+            y_offset = 20.0;
+        }
 
         let health_percent = (unit.hp as f32) / (unit.max_hp as f32);
 
-        sprites[sprite_num] = new_squishable_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos, health_percent*HEX_SIZE ,HEX_SIZE);
+        sprites[sprite_num] = new_squishable_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos + y_offset, health_percent*HEX_SIZE ,HEX_SIZE);
 
         sprite_num = sprite_num + 1;
     });
 
+}
+
+// Jank as fuck
+pub fn get_open_space(game_state: &GameState) -> coordinate::MultiCoord {
+    let mut viable = true;
+    loop {
+        let mut rng = rand::thread_rng();
+        let num1: i32 = (rng.gen_range(-HEXGRID_RADIUS..HEXGRID_RADIUS));
+        let num2: i32 = (rng.gen_range(-HEXGRID_RADIUS..HEXGRID_RADIUS));
+        if (num1 + num2 >= -10) && (num1 + num2 <= 10) {
+            println!("got 3");
+            let num3: i32 = -num1 - num2;
+            let coord = coordinate::MultiCoord::force_cube(num1, num2, num3);
+
+            let tile = game_state.hexgrid.get(coord).unwrap();
+            if matches!(tile.terrain, Terrain::Forest) || matches!(tile.terrain, Terrain::Plain) {
+                if game_state.player1_units.len() > 0 {
+                    for unit in game_state.player1_units.iter() {
+                        if (unit.location == coord) {
+                            viable = false;
+                            break;
+                        }
+                    }
+                }
+                if game_state.player2_units.len() > 0 {
+                    for unit in game_state.player2_units.iter() {
+                        if (unit.location == coord) {
+                            viable = false;
+                            break;
+                        }
+                    }
+                }
+                if viable { 
+                    return coord
+                }
+            }
+        }
+    }
 }
 
 pub fn hex_to_xy(camera:&GPUCamera, q:f32, r:f32, s:f32) -> (f32, f32) {

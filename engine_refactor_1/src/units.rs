@@ -295,8 +295,7 @@ impl Unit {
                     let mut dist: i32 = 1; 
                     // Make if statements for each tile's movement cost
                     if let Some(tile) = grid.get(MultiCoord::from(neighbor)) {
-                        // TODO, ONLY CALL THIS LINE IF ITS NOT A HELICOPTER
-                        if tile.terrain == Terrain::Coast { 
+                        if (self.name != "Helicopter") && (tile.terrain == Terrain::Coast) { 
                             dist = 999;
                         }
                         if tile.terrain == Terrain::Plain { 
@@ -305,9 +304,16 @@ impl Unit {
                         if tile.terrain == Terrain::Mountain { 
                             dist = 999;
                         }
-                        // TODO: SPECIAL ONE FOR TANKS SO FORESTS ARE 2 COST FOR THEM
                         if tile.terrain == Terrain::Forest { 
                             dist = 1;
+                        }
+                        
+                        //Special movement costs
+                        if (self.name == "Infantry") && (tile.terrain == Terrain::Mountain) { 
+                            dist = 2;
+                        }
+                        if (self.name == "Tank") && (tile.terrain == Terrain::Forest) { 
+                            dist = 2;
                         }
                         // Make if statement if there is opponents unit
                         for unit in &enemy_units { 

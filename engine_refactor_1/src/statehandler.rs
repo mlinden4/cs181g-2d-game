@@ -211,17 +211,39 @@ pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sp
     game_state.player1_units = Vec::default();
     game_state.player2_units = Vec::default();
 
-    let tank1 = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0));
-    let tank2 = units::Unit::tank(coordinate::MultiCoord::force_cube(5, -1, -4));
+    gamemap::load_default_hexgrid(&mut game_state.hexgrid);
 
+    // Generate 6 random locations that are on forest or plain tiles
+
+    // let tank1 = units::Unit::tank(coordinate::MultiCoord::force_cube(0, 0, 0));
+    // let heli = units::Unit::helicopter(coordinate::MultiCoord::force_cube(5, -1, -4));
+    // let inf = units::Unit::infantry(coordinate::MultiCoord::force_cube(6, -2, -4));
+
+    // game_state.player1_units.push(tank1);
+    // game_state.player1_units.push(heli);
+    // game_state.player1_units.push(inf);
+
+    // let tank2 = units::Unit::tank(coordinate::MultiCoord::force_cube(-7, 0, 7));
+    // let heli2 = units::Unit::helicopter(coordinate::MultiCoord::force_cube(-8, 0, 8));
+    // let inf2 = units::Unit::infantry(coordinate::MultiCoord::force_cube(-9, 1, 8));
+
+    // game_state.player2_units.push(tank2);
+    // game_state.player2_units.push(heli2);
+    // game_state.player2_units.push(inf2);
+
+    let tank1 = units::Unit::tank(get_open_space(game_state));
     game_state.player1_units.push(tank1);
-    game_state.player1_units.push(tank2);
+    let heli = units::Unit::helicopter(get_open_space(game_state));
+    game_state.player1_units.push(heli);
+    let inf = units::Unit::infantry(get_open_space(game_state));
+    game_state.player1_units.push(inf);
 
-    let tank3 = units::Unit::tank(coordinate::MultiCoord::force_cube(-7, 0, 7));
-    let tank4 = units::Unit::tank(coordinate::MultiCoord::force_cube(-8, 0, 8));
-
-    game_state.player2_units.push(tank3);
-    game_state.player2_units.push(tank4);
+    let tank2 = units::Unit::tank(get_open_space(game_state));
+    game_state.player2_units.push(tank2);
+    let heli2 = units::Unit::helicopter(get_open_space(game_state));
+    game_state.player2_units.push(heli2);
+    let inf2 = units::Unit::infantry(get_open_space(game_state));
+    game_state.player2_units.push(inf2);
 
     sprites.add_sprite_group(&gpu, sprite_sheet0, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
     sprites.add_sprite_group(&gpu, sprite_sheet1, vec![GPUSprite::zeroed(); 1024]);   // 1 is player 1 units
@@ -234,7 +256,6 @@ pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sp
 
     const TILE_NUM : usize = 1024; // usize is the type representing the offset in memory (32 on 32 bit systems, 64 on 64 etc. )
     // gpu.queue.write_buffer(&buffer_camera, 0, bytemuck::bytes_of(&camera));
-    gamemap::load_default_hexgrid(&mut game_state.hexgrid);
     gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
     gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
@@ -276,6 +297,26 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
         sprites.clear_sprite_groups();
         game_state.game_mode = GameMode::MainMenu(true);
         return;
+    }
+
+    if input.is_key_pressed(winit::event::VirtualKeyCode::Space) {
+        if let GameMode::WarGame(_, 1) = game_state.game_mode {
+            for unit in game_state.player1_units.iter_mut() {
+                unit.remaining_movement = unit.movement;
+                unit.has_fought = false;
+            }
+
+            game_state.game_mode = GameMode::WarGame(false, 2);
+        }
+
+        else {
+            for unit in game_state.player2_units.iter_mut() {
+                unit.remaining_movement = unit.movement;
+                unit.has_fought = false;
+            }
+
+            game_state.game_mode = GameMode::WarGame(false, 1);
+        }
     }
 
     if input.is_key_down(winit::event::VirtualKeyCode::Key1) {
