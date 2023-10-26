@@ -204,7 +204,8 @@ impl Unit {
         }
     }
 
-    pub fn move_unit(&mut self, destination: coordinate::MultiCoord, enemy_units : Vec<Unit>, allied_units : Vec<Unit>, grid: &HexGrid<Tile>) {
+    // if true u die
+    pub fn move_unit(&mut self, destination: coordinate::MultiCoord, enemy_units : &mut Vec<Unit>, allied_units : Vec<Unit>, grid: &HexGrid<Tile>) -> bool {
         let itin = self.bfs(grid, enemy_units.clone(), allied_units.clone());
         
 
@@ -212,17 +213,61 @@ impl Unit {
         if let Some(result) = itin.iter().find(|itinerary| itinerary.coordinate == destination.to_cube().unwrap()) {
             let match_itin = result;
             print!("WITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITINWITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITIN\n");
-            if let Some(enemy) = enemy_units.iter().find(|enemy: &&Unit| enemy.location == destination) {
-                print!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY\n");
-                // FIGHT, if returns true, move unit to location
-            }
-            else if self.movement >= match_itin.distance as usize{
+            // if let Some(mut enemy) = enemy_units.iter().find(|enemy: &&Unit| enemy.location == destination) {
+            //     print!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY\n");
+            //     // FIGHT, if returns true, move unit to location
+            //     self.fight(&mut enemy);
+            // }
+
+            if self.remaining_movement >= match_itin.distance as usize{
+                 
                 self.location = destination;
+                
+                // self.remaining_movement -= match_itin.distance as usize;
                 print!("\n DIST DIST DIST DIST DIST DIST DIST DIST \n");
             }
             print!("\n FUCKED FUCKED FUCKED FUCKED FUCKED FUCKED \n {}", match_itin.distance);
             // now check if enemy at location
+            if let Some(index) = enemy_units.iter().position(|enemy| enemy.location == destination) {
+                println!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY");
+            
+                // Get a reference to the matching enemy
+                let mut enemy = &mut enemy_units[index];
+                let (youdie, theydie) = self.fight(enemy);
+
+                // Remove the matching enemy from the vector
+                if youdie {
+                    print!("you died\n");
+                    if theydie { //how????
+                        print!("you died and they died\n");
+                        self.hp += 1;
+                        self.location = destination;
+                        return false;
+                    } 
+                    return true;
+                } else { // if you dont die
+                    if theydie {
+                        print!("they died\n");
+                        enemy_units.remove(index);
+                        self.location = destination;
+                    }
+                    print!("you won\n");
+                    print!("your health {}\n", self.hp);
+                    return false;
+                }
+
+                // if let Some(enemy) = enemy_units.iter_mut().find(|enemy| enemy.location == destination) {
+                //     println!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY");
+                
+                //     // Now you have a mutable reference to the matching enemy, and you can modify it.
+                //     (result, death) =self.fight(enemy);
+                //     if result{
+                //         enemy_units.remove(index)
+                //     }
+            }
         }
+
+        return false;
     }
 
     pub fn bfs(&self, grid: &HexGrid<Tile>, enemy_units : Vec<Unit>, allied_units : Vec<Unit>) -> Vec<Itinerary> {
@@ -307,7 +352,7 @@ impl Unit {
                 }
             }
         }
-    
+        
         result
     }
     
