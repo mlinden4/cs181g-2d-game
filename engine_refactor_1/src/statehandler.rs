@@ -55,22 +55,10 @@ pub fn initalizeMainMenu(gpu:&wgpuimpl::WGPU, window:&Window, text_renders:&mut 
 
 
         const size:f32 = 256.0;
-    
-        const from_x:f32 = 1.0/7.0;
-        const from_y:f32 = 0.0;
-        const from_width:f32 = 1.0/7.0; //448 x 64
-        const from_height:f32 = 1.0;
 
         let mut main_menu_sprites: Vec<GPUSprite> = vec![
-            GPUSprite {     // Mountain map
-                to_region: [1075.0, 325.0, size, size],
-                from_region: [0.0*from_x, from_y, from_width, from_height],
-            },
-            GPUSprite {     // Tank unit
-                to_region: [275.0, 375.0, size, size],
-                from_region: [5.0*from_x, from_y, from_width, from_height],
-            },
-            
+            gamemap::new_sprite(0.0, 0.0, 1075.0, 325.0,  size),
+            gamemap::new_sprite(5.0, 0.0, 275.0, 375.0, size),    
         ];
 
         sprites.add_sprite_group(&gpu, texture, main_menu_sprites);
