@@ -162,7 +162,7 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
         }
     }
 
-    let file_path = "./content/".to_string() + &file_name + ".map";
+    let file_path = "./content/".to_string() + &file_name.trim() + ".map";
 
 
     let mut map_string = String::new();
@@ -196,6 +196,43 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
 
 }
 
+
+pub fn load_default_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
+
+    let binding = "./content/defaultMap.map".to_string();
+    let file_path = binding.trim();
+
+    let map_string = fs::read_to_string(file_path)?;
+
+    let mut new_hexgrid = create_hexgrid();
+    let mut idx_counter:usize = 0;
+
+    for q in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+        for r in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+            for s in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+                if q + r + s == 0 {
+                    
+                    match map_string.as_bytes()[idx_counter] {
+                        b'C' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Coast)) },
+                        b'P' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Plain))},
+                        b'M' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Mountain))},
+                        b'F' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Forest))},
+                        _ => ()
+                    }
+
+                    idx_counter += 1;
+
+                }
+            }
+        }
+    }
+
+    *hexgrid = new_hexgrid;
+
+    Ok(())
+    
+}
+
 pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
     println!("Enter filename to load from:");
     let mut file_name = String::new(); // filepath for input
@@ -210,7 +247,7 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
         }
     }
 
-    let file_path = "./content/".to_string() + &file_name + ".map";
+    let file_path = "./content/".to_string() + &file_name.trim() + ".map";
 
     let map_string = fs::read_to_string(file_path)?;
 

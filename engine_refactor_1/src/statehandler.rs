@@ -244,6 +244,7 @@ pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sp
 
     const TILE_NUM : usize = 1024; // usize is the type representing the offset in memory (32 on 32 bit systems, 64 on 64 etc. )
     // gpu.queue.write_buffer(&buffer_camera, 0, bytemuck::bytes_of(&camera));
+    gamemap::load_default_hexgrid(&mut game_state.hexgrid);
     gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
     gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
