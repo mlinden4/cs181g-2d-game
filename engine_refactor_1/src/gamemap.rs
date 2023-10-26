@@ -11,23 +11,37 @@ use std::path::PathBuf;
 use std::fs;
 use std::io;
 
-const hexgrid_radius:i32 = 10;
-const hex_size:f32 = 64.0;
+const HEXGRID_RADIUS:i32 = 10;
+const HEX_SIZE:f32 = 64.0;
     
-const from_x:f32 = 1.0/7.0;
-const from_y:f32 = 0.0;
-const from_width:f32 = 1.0/7.0; //448 x 64
-const from_height:f32 = 1.0;
+const FROM_X:f32 = 1.0/10.0;
+const FROM_Y:f32 = 1.0/2.0;
+const FROM_WIDTH:f32 = 1.0/10.0; //448 x 64
+const FROM_HEIGHT:f32 = 1.0/2.0;
 
 // move this out eventually
 pub fn create_hexgrid() -> HexGrid<tile::Tile> {
 
     let default_tile = tile::Tile::new(Terrain::Coast);
 
-    let mut terrain_hexgrid: HexGrid<tile::Tile> = HexGrid::new_radial(hexgrid_radius as u32, default_tile);
+    let mut terrain_hexgrid: HexGrid<tile::Tile> = HexGrid::new_radial(HEXGRID_RADIUS as u32, default_tile);
 
     terrain_hexgrid
 
+}
+
+pub fn new_sprite(ss_x:f32, ss_y:f32, world_x:f32, world_y:f32, size:f32) -> GPUSprite {
+    GPUSprite {
+        to_region: [world_x, world_y, size, size],
+        from_region: [ss_x*FROM_X, ss_y*FROM_Y, FROM_WIDTH, FROM_HEIGHT],
+    }
+}
+
+pub fn new_squishable_sprite(ss_x:f32, ss_y:f32, world_x:f32, world_y:f32, width:f32, height:f32) -> GPUSprite {
+    GPUSprite {
+        to_region: [world_x, world_y, width, height],
+        from_region: [ss_x*FROM_X, ss_y*FROM_Y, FROM_WIDTH, FROM_HEIGHT],
+    }
 }
 
 pub fn hexgrid_to_sprites(camera:&GPUCamera, hexgrid:&HexGrid<tile::Tile>, sprites: &mut[GPUSprite]) {
@@ -35,28 +49,31 @@ pub fn hexgrid_to_sprites(camera:&GPUCamera, hexgrid:&HexGrid<tile::Tile>, sprit
     let mut sprite_num = 0;
     // let mut output_sprites:Vec<GPUSprite> = vec![];
 
-    for q in -hexgrid_radius..=hexgrid_radius {
-        for r in -hexgrid_radius..=hexgrid_radius {
-            for s in -hexgrid_radius..=hexgrid_radius {
+    for q in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+        for r in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+            for s in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
                 if q + r + s == 0 {
 
                     let hex = hexgrid.get(coordinate::MultiCoord::force_cube(q, r, s)).unwrap();
 
-                    let mut sprite_idx = 0.0;
+                    let mut sprite_idx_x = 0.0;
+                    let mut sprite_idx_y = 0.0;
                     match hex.terrain {
-                        Terrain::Coast => { sprite_idx = 3.0 }
-                        Terrain::Plain => { sprite_idx = 4.0 }
-                        Terrain::Mountain => { sprite_idx = 0.0 }
-                        Terrain::Forest => { sprite_idx = 2.0 }
+                        Terrain::Coast => { sprite_idx_x = 3.0; sprite_idx_y = 0.0; }
+                        Terrain::Plain => { sprite_idx_x = 4.0; sprite_idx_y = 0.0; }
+                        Terrain::Mountain => { sprite_idx_x = 0.0; sprite_idx_y = 0.0; }
+                        Terrain::Forest => { sprite_idx_x = 2.0; sprite_idx_y = 0.0; }
                         // _ => ();
                     }
 
                     let (world_x_pos, world_y_pos) = hex_to_xy(camera, q as f32,r as f32,s as f32);
 
-                    sprites[sprite_num] = GPUSprite {
-                        to_region: [world_x_pos, world_y_pos, hex_size, hex_size],
-                        from_region: [sprite_idx*from_x, from_y, from_width, from_height],
-                    };
+                    sprites[sprite_num] = new_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos, HEX_SIZE);
+                    
+                    // GPUSprite {
+                    //     to_region: [world_x_pos, world_y_pos, hex_size, hex_size],
+                    //     from_region: [sprite_idx*from_x, from_y, from_width, from_height],
+                    // };
 
                     sprite_num = sprite_num + 1;
 
@@ -71,30 +88,68 @@ pub fn units_to_sprites(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSprit
     
     units.iter().for_each(|unit| {
 
-        let mut sprite_idx = 0.0;
+        let mut sprite_idx_x = 0.0;
+        let mut sprite_idx_y = 0.0;
 
         match unit.name.as_str() {
-            "Tank" => sprite_idx = 5.0,
-            _ => sprite_idx = 1.0,
+            "Tank" => { sprite_idx_x = 5.0; sprite_idx_y = 0.0 },
+            "Helicopter" => { sprite_idx_x = 6.0; sprite_idx_y = 0.0 },
+            _ => { sprite_idx_x = 1.0; sprite_idx_y = 0.0; },
         }
-
 
         let (q,r,s) = (unit.location.to_cube().unwrap().x(), unit.location.to_cube().unwrap().y(), unit.location.to_cube().unwrap().z());
 
         let (world_x_pos, world_y_pos) = hex_to_xy(camera, q as f32,r as f32,s as f32);
 
-        sprites[sprite_num] = GPUSprite {
-            to_region: [world_x_pos, world_y_pos, hex_size, hex_size],
-            from_region: [sprite_idx*from_x, from_y, from_width, from_height],
-        };
+        sprites[sprite_num] = new_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos, HEX_SIZE);
+        
+        
+        // GPUSprite {
+        //     to_region: [world_x_pos, world_y_pos, HEX_SIZE, HEX_SIZE],
+        //     from_region: [sprite_idx*from_x, from_y, from_width, from_height],
+        // };
 
         sprite_num = sprite_num + 1;
     });
 }
 
+pub fn units_to_healthbars(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSprite], player_num:usize){
+
+    let mut sprite_num = 0;
+    
+    units.iter().for_each(|unit| {
+
+        let mut sprite_idx_x = 0.0;
+        let mut sprite_idx_y = 0.0;
+
+        // match usize {
+        //     1 => { sprite_idx_x = 5.0; sprite_idx_y = 0.0 },
+        //     2 => { sprite_idx_x = 6.0; sprite_idx_y = 0.0 },
+        //     _ => { sprite_idx_x = 1.0; sprite_idx_y = 0.0; },
+        // }
+
+        if player_num == 1 {
+            sprite_idx_x = 0.0; sprite_idx_y = 1.0;
+        }else {
+            sprite_idx_x = 1.0; sprite_idx_y = 1.0;
+        }
+
+        let (q,r,s) = (unit.location.to_cube().unwrap().x(), unit.location.to_cube().unwrap().y(), unit.location.to_cube().unwrap().z());
+
+        let (world_x_pos, world_y_pos) = hex_to_xy(camera, q as f32,r as f32,s as f32);
+
+        let health_percent = (unit.hp as f32) / (unit.map_hp as f32);
+
+        sprites[sprite_num] = new_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos, health_percent*HEX_SIZE ,HEX_SIZE);
+
+        sprite_num = sprite_num + 1;
+    });
+
+}
+
 pub fn hex_to_xy(camera:&GPUCamera, q:f32, r:f32, s:f32) -> (f32, f32) {
 
-    let size:f32 = hex_size / 2.0 as f32; //32 px
+    let size:f32 = HEX_SIZE / 2.0 as f32; //32 px
 
     //64 wide, 56 tall
 
@@ -106,7 +161,7 @@ pub fn hex_to_xy(camera:&GPUCamera, q:f32, r:f32, s:f32) -> (f32, f32) {
 
 pub fn xy_to_hex(camera:&GPUCamera, x:f32, y:f32) -> (i32, i32, i32) {
 
-    let size:f32 = hex_size / 2.0 as f32; //32 px
+    let size:f32 = HEX_SIZE / 2.0 as f32; //32 px
 
     let corrected_x = x - (camera.screen_size[0] / 2.0 as f32);
     let corrected_y = y - (camera.screen_size[1] / 2.0 as f32);
@@ -149,25 +204,29 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
         }
     }
 
-    let mut path = PathBuf::new();
 
-    path.push("./content");
-    path.push(file_name.trim());
+//     let mut path = PathBuf::new();
 
-    path.set_extension("map");
+//     path.push("./content");
+//     path.push(file_name.trim());
 
-    // let file_path = "./content/".to_string() + &file_name + ".map";
+//     path.set_extension("map");
 
-    // let map_string = fs::read(path);
+//     // let file_path = "./content/".to_string() + &file_name + ".map";
+
+//     // let map_string = fs::read(path);
+
+    let file_path = "./content/".to_string() + &file_name.trim() + ".map";
+
 
 
     let mut map_string = String::new();
 
     
 
-    for q in -hexgrid_radius..=hexgrid_radius {
-        for r in -hexgrid_radius..=hexgrid_radius {
-            for s in -hexgrid_radius..=hexgrid_radius {
+    for q in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+        for r in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+            for s in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
                 if q + r + s == 0 {
                     let hex = hexgrid.get(coordinate::MultiCoord::force_cube(q, r, s)).unwrap();
 
@@ -192,6 +251,43 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
 
 }
 
+
+pub fn load_default_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
+
+    let binding = "./content/defaultMap.map".to_string();
+    let file_path = binding.trim();
+
+    let map_string = fs::read_to_string(file_path)?;
+
+    let mut new_hexgrid = create_hexgrid();
+    let mut idx_counter:usize = 0;
+
+    for q in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+        for r in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+            for s in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+                if q + r + s == 0 {
+                    
+                    match map_string.as_bytes()[idx_counter] {
+                        b'C' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Coast)) },
+                        b'P' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Plain))},
+                        b'M' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Mountain))},
+                        b'F' => { new_hexgrid.set(coordinate::MultiCoord::force_cube(q, r, s), tile::Tile::new(Terrain::Forest))},
+                        _ => ()
+                    }
+
+                    idx_counter += 1;
+
+                }
+            }
+        }
+    }
+
+    *hexgrid = new_hexgrid;
+
+    Ok(())
+    
+}
+
 pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
     println!("Enter filename to load from:");
     let mut file_name = String::new(); // filepath for input
@@ -206,14 +302,18 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
         }
     }
 
-    let mut path = PathBuf::new();
 
-    path.push("./content");
-    path.push(file_name.trim());
+//     let mut path = PathBuf::new();
 
-    path.set_extension("map");
+//     path.push("./content");
+//     path.push(file_name.trim());
+
+//     path.set_extension("map");
 
     // let file_path = "./content/".to_string() + &file_name + ".map";
+
+    let file_path = "./content/".to_string() + &file_name.trim() + ".map";
+
 
     let map_string = fs::read(path).unwrap();
 
@@ -221,9 +321,9 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
     let mut new_hexgrid = create_hexgrid();
     let mut idx_counter:usize = 0;
 
-    for q in -hexgrid_radius..=hexgrid_radius {
-        for r in -hexgrid_radius..=hexgrid_radius {
-            for s in -hexgrid_radius..=hexgrid_radius {
+    for q in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+        for r in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
+            for s in -HEXGRID_RADIUS..=HEXGRID_RADIUS {
                 if q + r + s == 0 {
                     
                     match map_string[idx_counter] {
