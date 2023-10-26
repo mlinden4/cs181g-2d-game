@@ -75,6 +75,7 @@ pub fn units_to_sprites(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSprit
 
         match unit.name.as_str() {
             "Tank" => sprite_idx = 5.0,
+            "Helicopter" => sprite_idx = 6.0,
             _ => sprite_idx = 1.0,
         }
 

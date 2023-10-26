@@ -16,7 +16,7 @@ pub struct Itinerary {
     distance: i32
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Unit {
     pub name: String,
     hp: usize,
@@ -117,39 +117,24 @@ impl Unit {
         }
     }
 
-    pub fn inrange(&self, destination: coordinate::MultiCoord, grid: &HexGrid<Tile>) -> bool {
-        // do not need to check for occupied, already done in statehandler
-        let origin_cube =self.location.to_cube().unwrap();
-        let dest_cube = destination.to_cube().unwrap();
-        let dist = origin_cube.dist(dest_cube);
+    pub fn move_unit(&mut self, destination: coordinate::MultiCoord, enemy_units : Vec<Unit>, allied_units : Vec<Unit>, grid: &HexGrid<Tile>) {
+        let itin = self.bfs(grid, enemy_units.clone(), allied_units.clone());
+        
 
-        print!("{}", dist);
-
-        if dist <= self.movement as i32 {
-            if self.name != "Helicopter" {
-                return true;
-            } else {
-                return !grid.get(destination).unwrap().is_mountain(); // look at 
+        // if reachable
+        if let Some(result) = itin.iter().find(|itinerary| itinerary.coordinate == destination.to_cube().unwrap()) {
+            let match_itin = result;
+            if self.movement <= match_itin.distance as usize{
+                self.location = destination;
+            }
+            // now check if enemy at location
+            if let Some(enemy) = enemy_units.iter().find(|enemy: &&Unit| enemy.location == destination) {
+                // FIGHT, if returns true, move unit to location
             }
         }
-
-        false
-
-        // let is_occupied = grid.get(destination).unwrap().is_occupied();
-        // if !is_occupied {
-        //     let origin_cube =self.location.to_cube().unwrap();
-        //     let dest_cube = destination.to_cube().unwrap();
-        //     let dist = origin_cube.dist(dest_cube);
-        //     dist <= self.movement as i32
-        // } else {
-        //     false
-        // }
-        // will eventually include dijkstra and terrain cost movement, will do a loop and bfs
-        // also check to see if another unit is in tile, return false 
-        // is distance to dest and compare with movement
     }
 
-    pub fn bfs(&self, grid: &HexGrid<Tile>, enemy_units : Vec<Unit>, allied_units : Vec<Unit>) -> Vec<(Itinerary)> {
+    pub fn bfs(&self, grid: &HexGrid<Tile>, enemy_units : Vec<Unit>, allied_units : Vec<Unit>) -> Vec<Itinerary> {
         let origin_cube = self.location.to_cube().unwrap();
         
         let mut visited = HashSet::new(); // To keep track of visited coordinates
@@ -235,13 +220,13 @@ impl Unit {
     }
     
 
-    pub fn move_unit(&mut self, destination: coordinate::MultiCoord, grid: &mut HexGrid<Tile>) {
-        if self.inrange(destination, grid) {
-            // grid.get_mut(self.location).unwrap().set_empty(); // set original tile as empty
-            // grid.get_mut(destination).unwrap().set_occupied(); // set new tile to occupied
-            self.location = destination
-        }
-    }
+    // pub fn move_unit(&mut self, destination: coordinate::MultiCoord, grid: &mut HexGrid<Tile>) {
+    //     if self.inrange(destination, grid) {
+    //         // grid.get_mut(self.location).unwrap().set_empty(); // set original tile as empty
+    //         // grid.get_mut(destination).unwrap().set_occupied(); // set new tile to occupied
+    //         self.location = destination
+    //     }
+    // }
 
 }
  
