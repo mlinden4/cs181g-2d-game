@@ -271,6 +271,8 @@ pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sp
     game_state.moving_unit_location = None;
     game_state.game_mode = GameMode::WarGame(false, 1); //Player 1's turn is first
 
+    println!("Player 1's Turn");
+
 }
 
 pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut gpuprops::GPUCamera, 
@@ -307,6 +309,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
             }
 
             game_state.game_mode = GameMode::WarGame(false, 2);
+            println!("Player 2's Turn");
         }
 
         else {
@@ -316,6 +319,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
             }
 
             game_state.game_mode = GameMode::WarGame(false, 1);
+            println!("Player 1's Turn");
         }
     }
 
@@ -388,13 +392,13 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                         }
                     }
                 } */
-                print!("1111111111111111111111111111111111111111111111111111111\n");
+                // print!("1111111111111111111111111111111111111111111111111111111\n");
                 if let Some(index) = game_state.player1_units.iter().position(|unit| unit.location == from_location) {
                     let copy = game_state.player1_units.clone();
                     let unit = &mut game_state.player1_units[index];
                     
                     if unit.move_unit(clicked_coord, &mut game_state.player2_units, copy, &mut game_state.hexgrid) {
-                        print!("REMOVED 1 REMOVED REMOVED\n");
+                        // print!("REMOVED 1 REMOVED REMOVED\n");
                         // If move_unit returns true, remove the unit from player1_units
                         game_state.player1_units.remove(index);
                     }
@@ -402,7 +406,9 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                     game_state.moving_unit_location = None;
                     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
                     gamemap::units_to_healthbars(&camera, &game_state.player1_units, sprites.get_sprites_mut(3), 1);
-                    game_state.game_mode = GameMode::WarGame(false, 2); // Switch play to player 2
+                    gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
+                    gamemap::units_to_healthbars(&camera, &game_state.player2_units, sprites.get_sprites_mut(4), 2);
+                    // game_state.game_mode = GameMode::WarGame(false, 2); // Switch play to player 2
                 }
                 /* if let Some(index) = game_state.player1_units.iter().position(|unit| unit.location == from_location) {
                     let copy = game_state.player1_units.clone();
@@ -461,7 +467,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                         }
                     }
                 } */
-                print!("222222222222222222222222222222222222222222222\n");
+                // print!("222222222222222222222222222222222222222222222\n");
                 /*if let Some(index) = game_state.player2_units.iter().position(|unit| unit.location == from_location) {
                     let copy = game_state.player2_units.clone();
                     let unit = &mut game_state.player2_units[index];
@@ -478,14 +484,16 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                     
                     if unit.move_unit(clicked_coord, &mut game_state.player1_units, copy, &mut game_state.hexgrid) {
                         // If move_unit returns true, remove the unit from player1_units
-                        print!("REMOVED 2 REMOVED REMOVED\n");
+                        // print!("REMOVED 2 REMOVED REMOVED\n");
                         game_state.player1_units.remove(index);
                     }
                 
                     game_state.moving_unit_location = None;
                     gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
                     gamemap::units_to_healthbars(&camera, &game_state.player2_units, sprites.get_sprites_mut(4), 2);
-                    game_state.game_mode = GameMode::WarGame(false, 1); // Switch play to player 2
+                    gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
+                    gamemap::units_to_healthbars(&camera, &game_state.player1_units, sprites.get_sprites_mut(3), 1);
+                    // game_state.game_mode = GameMode::WarGame(false, 1); // Switch play to player 2
                 }
 
                 // // After looking through all units, no unit is there
@@ -513,7 +521,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 // If a match, set it to the moving unit
                 for unit in &game_state.player1_units {
                     if unit.location == clicked_coord {
-                        print!("yesyesyesyesyesyesyesyesyesyesyesyesyesyesyes\n");
+                        // print!("yesyesyesyesyesyesyesyesyesyesyesyesyesyesyes\n");
                         game_state.moving_unit_location = Some(unit.location);
                         break;
                     }
@@ -524,7 +532,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 // If a match, set it to the moving unit
                 for unit in &game_state.player2_units {
                     if unit.location == clicked_coord {
-                        print!("yesyesyesyesyesyesyesyesyesyesyesyesyesyesyes\n");
+                        // print!("yesyesyesyesyesyesyesyesyesyesyesyesyesyesyes\n");
                         game_state.moving_unit_location = Some(unit.location);
                         break;
                     }
@@ -550,6 +558,12 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
     sprites.refresh_sprites(&gpu, 3, 0..length);
     let length = sprites.get_sprites(4).len();
     sprites.refresh_sprites(&gpu, 4, 0..length);
+
+    if game_state.player1_units.len() == 0 {
+        game_state.game_mode = GameMode::GameOver(true, 2);
+    }else if game_state.player2_units.len() == 0 {
+        game_state.game_mode = GameMode::GameOver(true, 1);
+    }
 
 }
 

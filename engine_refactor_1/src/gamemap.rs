@@ -158,12 +158,12 @@ pub fn units_to_healthbars(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSp
 // Jank as fuck
 pub fn get_open_space(game_state: &GameState) -> coordinate::MultiCoord {
     let mut viable = true;
+    let mut rng = rand::thread_rng();
     loop {
-        let mut rng = rand::thread_rng();
-        let num1: i32 = (rng.gen_range(-HEXGRID_RADIUS..HEXGRID_RADIUS));
-        let num2: i32 = (rng.gen_range(-HEXGRID_RADIUS..HEXGRID_RADIUS));
+        let num1: i32 = (rng.gen_range(-HEXGRID_RADIUS..=HEXGRID_RADIUS));
+        let num2: i32 = (rng.gen_range(-HEXGRID_RADIUS..=HEXGRID_RADIUS));
         if (num1 + num2 >= -10) && (num1 + num2 <= 10) {
-            println!("got 3");
+            // println!("got 3");
             let num3: i32 = -num1 - num2;
             let coord = coordinate::MultiCoord::force_cube(num1, num2, num3);
 

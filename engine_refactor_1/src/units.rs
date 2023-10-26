@@ -20,14 +20,14 @@ pub struct Itinerary {
 #[derive(PartialEq, Clone)]
 pub struct Unit {
     pub name: String,
-    pub max_hp: usize,
-    pub hp: usize,
-    soft_attack: usize,
-    hard_attack: usize,
-    aa_damage: usize,
-    defense: usize,
-    pub movement: usize,
-    pub remaining_movement: usize,
+    pub max_hp: i32,
+    pub hp: i32,
+    soft_attack: i32,
+    hard_attack: i32,
+    aa_damage: i32,
+    defense: i32,
+    pub movement: i32,
+    pub remaining_movement: i32,
     terrain_modifiers: [TerrainModifier; 4], // Three terrain modifiers
     pub location: coordinate::MultiCoord,
     pub has_fought: bool
@@ -36,13 +36,13 @@ pub struct Unit {
 impl Unit {
     fn new(
         name: String,
-        max_hp: usize,
-        hp: usize,
-        soft_attack: usize,
-        hard_attack: usize,
-        aa_damage: usize,
-        defense: usize,
-        movement: usize,
+        max_hp: i32,
+        hp: i32,
+        soft_attack: i32,
+        hard_attack: i32,
+        aa_damage: i32,
+        defense: i32,
+        movement: i32,
         location: coordinate::MultiCoord,
         has_fought: bool,
     ) -> Self {
@@ -114,7 +114,7 @@ impl Unit {
             name: "Tank".into(),
             max_hp: 100,
             hp: 100,
-            soft_attack: 10,
+            soft_attack: 15,
             hard_attack: 15,
             aa_damage: 5,
             defense: 10,
@@ -151,10 +151,10 @@ impl Unit {
 
         Unit {
             name: "Helicopter".into(),
-            max_hp: 50,
-            hp: 50,
-            soft_attack: 10,
-            hard_attack: 20,
+            max_hp: 75,
+            hp: 75,
+            soft_attack: 15,
+            hard_attack: 25,
             aa_damage: 10,
             defense: 10,
             movement: 5,
@@ -190,8 +190,8 @@ impl Unit {
 
         Unit {
             name: "Infantry".into(),
-            max_hp: 150,
-            hp: 150,
+            max_hp: 120,
+            hp: 120,
             soft_attack: 10,
             hard_attack: 5,
             aa_damage: 20,
@@ -212,49 +212,53 @@ impl Unit {
         // if reachable
         if let Some(result) = itin.iter().find(|itinerary| itinerary.coordinate == destination.to_cube().unwrap()) {
             let match_itin = result;
-            print!("WITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITINWITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITIN\n");
+            // print!("WITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITINWITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITIN\n");
             // if let Some(mut enemy) = enemy_units.iter().find(|enemy: &&Unit| enemy.location == destination) {
             //     print!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY\n");
             //     // FIGHT, if returns true, move unit to location
             //     self.fight(&mut enemy);
             // }
 
-            if self.remaining_movement >= match_itin.distance as usize{
+            if self.remaining_movement >= match_itin.distance as i32{
                  
                 self.location = destination;
                 
-                // self.remaining_movement -= match_itin.distance as usize;
-                print!("\n DIST DIST DIST DIST DIST DIST DIST DIST \n");
+                self.remaining_movement -= match_itin.distance as i32;
+                // print!("\n DIST DIST DIST DIST DIST DIST DIST DIST \n");
             }
-            print!("\n FUCKED FUCKED FUCKED FUCKED FUCKED FUCKED \n {}", match_itin.distance);
+            // print!("\n FUCKED FUCKED FUCKED FUCKED FUCKED FUCKED \n {}", match_itin.distance);
             // now check if enemy at location
             if let Some(index) = enemy_units.iter().position(|enemy| enemy.location == destination) {
-                println!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY");
+                // println!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY");
             
                 // Get a reference to the matching enemy
                 let mut enemy = &mut enemy_units[index];
-                let (youdie, theydie) = self.fight(enemy);
+                if !self.has_fought {
+                    let (youdie, theydie) = self.fight(enemy);
 
-                // Remove the matching enemy from the vector
-                if youdie {
-                    print!("you died\n");
-                    if theydie { //how????
-                        print!("you died and they died\n");
-                        self.hp += 1;
-                        self.location = destination;
+                    // Remove the matching enemy from the vector
+                    if youdie {
+                        // print!("you died\n");
+                        if theydie { //how????
+                            // print!("you died and they died\n");
+                            self.hp = 1;
+                            self.location = destination;
+                            enemy_units.remove(index);
+                            return false;
+                        }
+                        return true;
+                    } else { // if you dont die
+                        if theydie {
+                            // print!("they died\n");
+                            enemy_units.remove(index);
+                            self.location = destination;
+                        }
+                        print!("you won\n");
+                        print!("your health {}\n", self.hp);
                         return false;
-                    } 
-                    return true;
-                } else { // if you dont die
-                    if theydie {
-                        print!("they died\n");
-                        enemy_units.remove(index);
-                        self.location = destination;
                     }
-                    print!("you won\n");
-                    print!("your health {}\n", self.hp);
-                    return false;
                 }
+                
 
                 // if let Some(enemy) = enemy_units.iter_mut().find(|enemy| enemy.location == destination) {
                 //     println!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY");
@@ -371,7 +375,7 @@ impl Unit {
         self.has_fought = true;
  
         // attacker info
-        let mut attack: usize = self.soft_attack;
+        let mut attack: i32 = self.soft_attack;
         if enemy.name == "Helicopter" {
             attack = self.aa_damage;
         }
@@ -381,7 +385,7 @@ impl Unit {
         let mut defense = enemy.defense;
 
         // defender counter info
-        let mut eattack: usize = enemy.soft_attack;
+        let mut eattack: i32 = enemy.soft_attack;
         if self.name == "Helicopter" {
             eattack = enemy.aa_damage;
         }
@@ -392,21 +396,30 @@ impl Unit {
 
         // Attack damage
         let mut rng = rand::thread_rng();
-        let attack_damage_modifer: i32 = (rng.gen_range(0..100))/100;
+        // let attack_damage_modifer: i32 = (rng.gen_range(0..100))/100;
 
-        let attack_power = (attack-defense)/defense;
-        let damage: i32 = 25 * attack_power as i32 * attack_damage_modifer;
+        let mut attack_power = attack;
+        // if(attack_power < 0) {
+        //     attack_power = 5;
+        // }
+        let damage: i32 = 25 + attack_power as i32;
 
         // Defense damage
-        let defense_damage_modifer: i32 = (rng.gen_range(0..100))/100;
+        // let defense_damage_modifer: i32 = (rng.gen_range(0..100))/100;
 
-        let defense_power = (eattack-edefense)/edefense;
-        let oof: i32 = 25 * defense_power as i32 * defense_damage_modifer;
+        let mut defense_power = eattack;
+        // if(defense_power < 0) {
+        //     defense_power = 0;
+        // }
+        let oof: i32 = 5 + defense_power as i32;
 
-        enemy.hp -= damage as usize;
-        self.hp -= oof as usize;
+        enemy.hp -= damage as i32;
+        self.hp -= oof as i32;
 
-        return (self.hp == 0, enemy.hp == 0)
+        // println!("def {}, def_mod", defense_power);
+        // println!("dmg: {}, oof {}", damage, oof);
+
+        return (self.hp <= 0, enemy.hp <= 0)
     }
 
 }
