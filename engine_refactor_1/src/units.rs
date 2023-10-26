@@ -233,24 +233,27 @@ impl Unit {
             
                 // Get a reference to the matching enemy
                 let mut enemy = &mut enemy_units[index];
-                let (result, death) = self.fight(enemy);
+                let (youdie, theydie) = self.fight(enemy);
 
                 // Remove the matching enemy from the vector
-                if result {
-                    print!("YOU WON\n");
-                    enemy_units.remove(index);
-                    if death { //how????
-                        print!("YOU WON ann died???\n");
+                if youdie {
+                    print!("you died\n");
+                    if theydie { //how????
+                        print!("you died and they died\n");
                         self.hp += 1;
+                        self.location = destination;
+                        return false;
+                    } 
+                    return true;
+                } else { // if you dont die
+                    if theydie {
+                        print!("they died\n");
+                        enemy_units.remove(index);
+                        self.location = destination;
                     }
-                    self.location = destination;
-                } else { // if your sorry ass lost
-                    print!("YOU hurting\n");
-                    
-                    if death {
-                        print!("YOU lost and died\n");
-                        return true;
-                    }
+                    print!("you won\n");
+                    print!("your health {}\n", self.hp);
+                    return false;
                 }
 
                 // if let Some(enemy) = enemy_units.iter_mut().find(|enemy| enemy.location == destination) {
