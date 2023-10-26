@@ -323,7 +323,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 // If not empty, if in player2_units list, remove moving unit and do nothing (or something later on)
                 let mut space_occupied = false;
                 
-                // Handle player 1 units
+                // Handle player 1 units - if player1 unit is selected to move
                 for unit in &game_state.player1_units {
                     if unit.location == clicked_coord {
                         game_state.moving_unit_location = Some(unit.location);
@@ -347,7 +347,8 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 if !space_occupied {
                     for mut unit in &mut game_state.player1_units {
                         if unit.location == from_location {
-                            unit.location = clicked_coord;
+                            // unit.location = clicked_coord; // change to contain limits
+                            unit.move_unit(clicked_coord, &mut game_state.hexgrid);
                             game_state.moving_unit_location = None;
                             break;
                         }
@@ -390,7 +391,8 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 if !space_occupied {
                     for mut unit in &mut game_state.player2_units {
                         if unit.location == from_location {
-                            unit.location = clicked_coord;
+                            // unit.location = clicked_coord;
+                            unit.move_unit(clicked_coord, &mut game_state.hexgrid);
                             game_state.moving_unit_location = None;
                             break;
                         }

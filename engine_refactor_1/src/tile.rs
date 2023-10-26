@@ -32,7 +32,7 @@ pub struct TerrainModifier {
 #[derive(Clone, Copy)]
 pub struct Tile {
     pub terrain: Terrain,
-    pub occupied: bool,
+    pub mountain: bool,
     // units: Vec<Unit>, // create a vec of units, keep track of what tile a unit is on
     // buildings: Vec<Buildings>,
     // sprite: GPUSprite,    Render elsewhere  // Could be a vec of GPU sprites all to render overlapped at a location
@@ -42,7 +42,7 @@ impl Tile {
 
     pub fn new(terrain:Terrain) -> Self {
 
-        let mut occupied = false;
+        let mut is_mountain = false;
 
         let mut x_idx = 0.0 as f32;
         let mut y_idx = 0.0 as f32;
@@ -52,33 +52,20 @@ impl Tile {
         match terrain {   // Decide which sprite to use
             Terrain::Coast =>       {(x_idx, y_idx) = (0.0, 0.0)},
             Terrain::Plain =>       {(x_idx, y_idx) = (0.0, 1.0)},
-            Terrain::Mountain =>    {(occupied, x_idx, y_idx) = (true, 1.0, 0.0)},
+            Terrain::Mountain =>    {(is_mountain, x_idx, y_idx) = (true, 1.0, 0.0)},
             Terrain::Forest =>      {(x_idx, y_idx) = (1.0, 1.0)},
             _ => ()
         }
 
         Self {
             terrain,
-            occupied: occupied,
+            mountain: is_mountain,
         }
 
     }
 
-    pub fn set_occupied(&mut self) {
-        self.occupied = true
-    }
-
-    pub fn set_empty(&mut self) {
-        self.occupied = false
-    }
-
-
-    pub fn is_occupied(&self) -> bool {
-        self.occupied
+    pub fn is_mountain(&self) -> bool {
+        self.mountain
     }
 
 } 
-
-pub fn set_grid_plain (grid: &mut HexGrid<Tile>) {
-
-}
