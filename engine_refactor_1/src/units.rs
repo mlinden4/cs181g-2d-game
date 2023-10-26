@@ -312,6 +312,7 @@ impl Unit {
 
         // Can no longer move after fighting
         self.remaining_movement = 0;
+        self.has_fought = true;
  
         // attacker info
         let mut attack: usize = self.soft_attack;
@@ -346,8 +347,8 @@ impl Unit {
         let defense_power = (eattack-edefense)/edefense;
         let oof: i32 = 25 * defense_power as i32 * defense_damage_modifer;
 
-        enemy.hp -= damage;
-        self.hp -= oof;
+        enemy.hp -= damage as usize;
+        self.hp -= oof as usize;
 
         return (self.hp == 0, enemy.hp == 0)
     }

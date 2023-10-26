@@ -205,18 +205,18 @@ pub fn save_hexgrid(hexgrid:&HexGrid<tile::Tile>) {
     }
 
 
-//     let mut path = PathBuf::new();
+    let mut path = PathBuf::new();
 
-//     path.push("./content");
-//     path.push(file_name.trim());
+    path.push("./content");
+    path.push(file_name.trim());
 
-//     path.set_extension("map");
+    path.set_extension("map");
 
-//     // let file_path = "./content/".to_string() + &file_name + ".map";
+    // let file_path = "./content/".to_string() + &file_name + ".map";
 
-//     // let map_string = fs::read(path);
+    let map_string = fs::read(path.clone());
 
-    let file_path = "./content/".to_string() + &file_name.trim() + ".map";
+    // let file_path = "./content/".to_string() + &file_name.trim() + ".map";
 
 
 
@@ -303,16 +303,16 @@ pub fn load_hexgrid(hexgrid:&mut HexGrid<tile::Tile>) -> io::Result<()>{
     }
 
 
-//     let mut path = PathBuf::new();
+    let mut path = PathBuf::new();
 
-//     path.push("./content");
-//     path.push(file_name.trim());
+    path.push("./content");
+    path.push(file_name.trim());
 
-//     path.set_extension("map");
+    path.set_extension("map");
 
     // let file_path = "./content/".to_string() + &file_name + ".map";
 
-    let file_path = "./content/".to_string() + &file_name.trim() + ".map";
+    // let file_path = "./content/".to_string() + &file_name.trim() + ".map";
 
 
     let map_string = fs::read(path).unwrap();
