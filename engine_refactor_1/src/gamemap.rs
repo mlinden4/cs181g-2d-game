@@ -36,6 +36,13 @@ pub fn new_sprite(ss_x:f32, ss_y:f32, world_x:f32, world_y:f32, size:f32) -> GPU
     }
 }
 
+pub fn new_squishable_sprite(ss_x:f32, ss_y:f32, world_x:f32, world_y:f32, width:f32, height:f32) -> GPUSprite {
+    GPUSprite {
+        to_region: [world_x, world_y, width, height],
+        from_region: [ss_x*FROM_X, ss_y*FROM_Y, FROM_WIDTH, FROM_HEIGHT],
+    }
+}
+
 pub fn hexgrid_to_sprites(camera:&GPUCamera, hexgrid:&HexGrid<tile::Tile>, sprites: &mut[GPUSprite]) {
 
     let mut sprite_num = 0;
@@ -103,6 +110,40 @@ pub fn units_to_sprites(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSprit
 
         sprite_num = sprite_num + 1;
     });
+}
+
+pub fn units_to_healthbars(camera:&GPUCamera, units:&[Unit], sprites: &mut[GPUSprite], player_num:usize){
+
+    let mut sprite_num = 0;
+    
+    units.iter().for_each(|unit| {
+
+        let mut sprite_idx_x = 0.0;
+        let mut sprite_idx_y = 0.0;
+
+        // match usize {
+        //     1 => { sprite_idx_x = 5.0; sprite_idx_y = 0.0 },
+        //     2 => { sprite_idx_x = 6.0; sprite_idx_y = 0.0 },
+        //     _ => { sprite_idx_x = 1.0; sprite_idx_y = 0.0; },
+        // }
+
+        if player_num == 1 {
+            sprite_idx_x = 0.0; sprite_idx_y = 1.0;
+        }else {
+            sprite_idx_x = 1.0; sprite_idx_y = 1.0;
+        }
+
+        let (q,r,s) = (unit.location.to_cube().unwrap().x(), unit.location.to_cube().unwrap().y(), unit.location.to_cube().unwrap().z());
+
+        let (world_x_pos, world_y_pos) = hex_to_xy(camera, q as f32,r as f32,s as f32);
+
+        let health_percent = (unit.hp as f32) / (unit.map_hp as f32);
+
+        sprites[sprite_num] = new_sprite(sprite_idx_x, sprite_idx_y, world_x_pos, world_y_pos, health_percent*HEX_SIZE ,HEX_SIZE);
+
+        sprite_num = sprite_num + 1;
+    });
+
 }
 
 pub fn hex_to_xy(camera:&GPUCamera, q:f32, r:f32, s:f32) -> (f32, f32) {

@@ -123,7 +123,6 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                 let (texture_sheet, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 statehandler::initalizeMapCreator(&gpu, &mut camera, texture_sheet, &mut sprites, &mut game_state);
                             }
-                            println!("Updating Map");
                             statehandler::updateMapCreator(&gpu, &mut input, &mut camera, &mut sprites, &mut game_state);
                         }
                         statehandler::GameMode::WarGame(needs_initialization, _) => {
@@ -131,10 +130,11 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                                 let (texture_sheet0, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 let (texture_sheet1, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 let (texture_sheet2, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+                                let (texture_sheet3, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
+                                let (texture_sheet4, _) = load_texture("content/Game1Sheet.png", Some("Game1Sheet image"), &gpu.device, &gpu.queue).expect("Couldn't load Game1Sheet img");
                                 // let sprite_steets = vec![texture_sheet0, texture_sheet1, texture_sheet2];
-                                statehandler::initalizeWarGame(&gpu, &mut camera, texture_sheet0, texture_sheet1, texture_sheet2, &mut sprites, &mut game_state);
+                                statehandler::initalizeWarGame(&gpu, &mut camera, texture_sheet0, texture_sheet1, texture_sheet2, texture_sheet3, texture_sheet4, &mut sprites, &mut game_state);
                             }
-                            println!("Updating War");
                             statehandler::updateWarGame(&gpu, &mut input, &mut camera, &mut sprites, &mut game_state);
                         }
                         statehandler::GameMode::GameOver(needs_initialization, winner) => {

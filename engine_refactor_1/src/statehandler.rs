@@ -119,19 +119,19 @@ pub fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mu
     
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key1) {
         game_state.global_tile = Tile::new(tile::Terrain::Plain);
-        println!("{}", "PLAINS");
+        println!("{}", "Selected: PLAINS");
     }
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key4) {
         game_state.global_tile = Tile::new(tile::Terrain::Mountain);
-        println!("{}", "MOUNTAIN");
+        println!("{}", "Selected: MOUNTAIN");
     }
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key2) {
         game_state.global_tile = Tile::new(tile::Terrain::Coast);
-        println!("{}", "COAST");
+        println!("{}", "Selected: COAST");
     }
     if input.is_key_pressed(winit::event::VirtualKeyCode::Key3) {
         game_state.global_tile = Tile::new(tile::Terrain::Forest);
-        println!("{}", "FOREST");
+        println!("{}", "Selected: FOREST");
     }
     if input.is_key_down(winit::event::VirtualKeyCode::W) {
         camera.screen_pos[1] += 10.0;
@@ -156,17 +156,6 @@ pub fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mu
         return;
     }
 
-    // if input.is_key_down(winit::event::VirtualKeyCode::P) {
-    //     player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
-    //     gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
-    //     println!("{}", "moved")
-    // }
-    // if input.is_key_down(winit::event::VirtualKeyCode::O) {
-    //     player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
-    //     gamemap::units_to_sprites(&camera, &player1_units, sprites.get_sprites_mut(1));
-    //     println!("{}", "moved")
-    // }
-
     if input.is_key_pressed(winit::event::VirtualKeyCode::M) {
         gamemap::save_hexgrid(&game_state.hexgrid);
     }
@@ -183,11 +172,6 @@ pub fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mu
         // TODO screen -> multicord needed
         let mouse_pos = input.mouse_pos();
         // Normalize mouse clicks to be 00 at bottom left corner
-        // this stays ase gpu bc mouse coords normalize
-        // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32, ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32); //OG
-        // let (x_norm, y_norm) = (mouse_pos.x as f32 / gpu.config.width as f32,
-        //                         ((gpu.config.height as f32) - (mouse_pos.y as f32))/ gpu.config.height as f32);
-        
         let (x_norm, y_norm) = ((mouse_pos.x as f32 + camera.screen_pos[0]),
                                 ((mouse_pos.y as f32 - camera.screen_size[1]) * (-1.0 as f32)) + camera.screen_pos[1]);
         // println!("{}, {}", x_norm, y_norm);
@@ -198,8 +182,8 @@ pub fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mu
         // for this, if camera is on right, we want tiles to right, but in rendering we want left stuff.
         //println!("{}, {}, {}", q, r, s);
 
-        println!("{} {}", x_norm, y_norm);
-        println!("{} {} {}", q, r, s);
+        // println!("{} {}", x_norm, y_norm);
+        // println!("{} {} {}", q, r, s);
         
 
         game_state.hexgrid.update(coordinate::MultiCoord::force_cube(q, r, s), game_state.global_tile);
@@ -217,7 +201,8 @@ pub fn updateMapCreator(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mu
 }
 
 pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sprite_sheet0: wgpu::Texture, 
-    sprite_sheet1: wgpu::Texture, sprite_sheet2: wgpu::Texture, sprites:&mut spriterenderer::SpriteRenderer,  game_state:&mut GameState) {
+    sprite_sheet1: wgpu::Texture, sprite_sheet2: wgpu::Texture, sprite_sheet3: wgpu::Texture, sprite_sheet4: wgpu::Texture, 
+    sprites:&mut spriterenderer::SpriteRenderer,  game_state:&mut GameState) {
 
     sprites.clear_sprite_groups();
 
@@ -239,6 +224,9 @@ pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sp
     sprites.add_sprite_group(&gpu, sprite_sheet0, vec![GPUSprite::zeroed(); 1024]);   // 0 is terrain hex
     sprites.add_sprite_group(&gpu, sprite_sheet1, vec![GPUSprite::zeroed(); 1024]);   // 1 is player 1 units
     sprites.add_sprite_group(&gpu, sprite_sheet2, vec![GPUSprite::zeroed(); 1024]);   // 2 is player 2 units
+    sprites.add_sprite_group(&gpu, sprite_sheet3, vec![GPUSprite::zeroed(); 1024]);   // 3 is player 1 health bars
+    sprites.add_sprite_group(&gpu, sprite_sheet4, vec![GPUSprite::zeroed(); 1024]);   // 4 is player 2 health bars
+
     // Resverve extra space for each sprite sheet thing. LIke 1024 for the hex map and 1024 for the units, etc.
     // TODO: Make function to calculate size of hexgrid instead of 1024 above. Can also reallocate dymanically
 
@@ -248,9 +236,14 @@ pub fn initalizeWarGame(gpu:&wgpuimpl::WGPU, camera:&mut gpuprops::GPUCamera, sp
     gamemap::hexgrid_to_sprites(&camera, &game_state.hexgrid, sprites.get_sprites_mut(0));
     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
     gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
+    gamemap::units_to_healthbars(&camera, &game_state.player1_units, sprites.get_sprites_mut(3), 1);
+    gamemap::units_to_healthbars(&camera, &game_state.player2_units, sprites.get_sprites_mut(4), 2);
+
     sprites.refresh_sprites(&gpu, 0, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 1, 0..TILE_NUM);
     sprites.refresh_sprites(&gpu, 2, 0..TILE_NUM);
+    sprites.refresh_sprites(&gpu, 3, 0..TILE_NUM);
+    sprites.refresh_sprites(&gpu, 4, 0..TILE_NUM);
 
     game_state.moving_unit_location = None;
     game_state.game_mode = GameMode::WarGame(false, 1); //Player 1's turn is first
@@ -295,20 +288,6 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
         return;
     }
 
-    // if input.is_key_pressed(winit::event::VirtualKeyCode::Z) {
-    //     game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(6, -9, 3);
-    //     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
-    //     println!("{}", "moved")
-    // }
-    // if input.is_key_pressed(winit::event::VirtualKeyCode::X) {
-    //     game_state.player1_units[0].location = coordinate::MultiCoord::force_cube(0, 0, 0);
-    //     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
-    //     println!("{}", "moved")
-    // }
-
-    // if input.is_key_pressed(winit::event::VirtualKeyCode::M) {
-    //     gamemap::save_hexgrid(&hexgrid);
-    // }
 
     if input.is_key_pressed(winit::event::VirtualKeyCode::L) {
         gamemap::load_hexgrid(&mut game_state.hexgrid);
@@ -331,7 +310,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
         // let (q, r, s) = xy_to_hex(&camera, hex_size, x_norm * camera.screen_size[0] + camera.screen_pos[0], y_norm * camera.screen_size[1] + camera.screen_pos[1]); //OG
         let (q, r, s) = gamemap::xy_to_hex(&camera, x_norm, y_norm);
 
-        println!("{} {} {}", q, r, s);
+        // println!("{} {} {}", q, r, s);
 
 
         let clicked_coord = coordinate::MultiCoord::force_cube(q, r, s);
@@ -374,6 +353,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                         }
                     }
                     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
+                    gamemap::units_to_healthbars(&camera, &game_state.player1_units, sprites.get_sprites_mut(3), 1);
                     game_state.game_mode = GameMode::WarGame(false, 2);   // Switch play to player 2
                     
                 }
@@ -416,6 +396,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                         }
                     }
                     gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
+                    gamemap::units_to_healthbars(&camera, &game_state.player2_units, sprites.get_sprites_mut(4), 2);
                     game_state.game_mode = GameMode::WarGame(false, 1);   //Switch play to player 1
                 }
 
@@ -460,6 +441,10 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
     sprites.refresh_sprites(&gpu, 1, 0..length);
     let length = sprites.get_sprites(2).len();
     sprites.refresh_sprites(&gpu, 2, 0..length);
+    let length = sprites.get_sprites(3).len();
+    sprites.refresh_sprites(&gpu, 3, 0..length);
+    let length = sprites.get_sprites(4).len();
+    sprites.refresh_sprites(&gpu, 4, 0..length);
 
 }
 
