@@ -124,13 +124,17 @@ impl Unit {
         // if reachable
         if let Some(result) = itin.iter().find(|itinerary| itinerary.coordinate == destination.to_cube().unwrap()) {
             let match_itin = result;
-            if self.movement <= match_itin.distance as usize{
-                self.location = destination;
-            }
-            // now check if enemy at location
+            print!("WITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITINWITHIN ITIN WITHIN ITIN WITHIN ITIN WITHIN ITIN\n");
             if let Some(enemy) = enemy_units.iter().find(|enemy: &&Unit| enemy.location == destination) {
+                print!("ENEMY ENEMY ENEMY ENEMY ENEMY ENEMY\n");
                 // FIGHT, if returns true, move unit to location
             }
+            else if self.movement >= match_itin.distance as usize{
+                self.location = destination;
+                print!("\n DIST DIST DIST DIST DIST DIST DIST DIST \n");
+            }
+            print!("\n FUCKED FUCKED FUCKED FUCKED FUCKED FUCKED \n {}", match_itin.distance);
+            // now check if enemy at location
         }
     }
 
