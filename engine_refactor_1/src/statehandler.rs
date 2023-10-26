@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+
 use crate::gpuprops::GPUSprite;
 use crate::gpuprops::GPUCamera;
 use crate::units;
@@ -321,6 +323,9 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 // If player 1, see if spot is available. If so move old unit there, and remove moving unit
                 // If not empty, if in player1_units list, set the moving unit to that unit
                 // If not empty, if in player2_units list, remove moving unit and do nothing (or something later on)
+
+                
+                /* 
                 let mut space_occupied = false;
                 
                 // Handle player 1 units - if player1 unit is selected to move
@@ -341,28 +346,39 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                             break;
                         }
                     }
-                }
-
-                // After looking through all units, no unit is there
-                if !space_occupied {
-                    for mut unit in &mut game_state.player1_units {
-                        if unit.location == from_location {
-                            // unit.location = clicked_coord; // change to contain limits
-                            unit.move_unit(clicked_coord, &mut game_state.hexgrid);
-                            game_state.moving_unit_location = None;
-                            break;
-                        }
-                    }
+                } */
+                print!("1111111111111111111111111111111111111111111111111111111\n");
+                if let Some(index) = game_state.player1_units.iter().position(|unit| unit.location == from_location) {
+                    let copy = game_state.player1_units.clone();
+                    let unit = &mut game_state.player1_units[index];
+                    unit.move_unit(clicked_coord, game_state.player2_units.clone(), copy, &mut game_state.hexgrid);
+                    game_state.moving_unit_location = None;
                     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
                     gamemap::units_to_healthbars(&camera, &game_state.player1_units, sprites.get_sprites_mut(3), 1);
                     game_state.game_mode = GameMode::WarGame(false, 2);   // Switch play to player 2
                     
                 }
+                
+                
+                // // After looking through all units, no unit is there
+                // if !space_occupied {
+                //     let player1_units = game_state.player1_units.clone();
+                //     for mut unit in &mut game_state.player1_units {
+                //         if unit.location == from_location {
+                //             // unit.location = clicked_coord; // change to contain limits
+                //             unit.move_unit(clicked_coord, game_state.player2_units.clone(), player1_units, &mut game_state.hexgrid);
+                //             game_state.moving_unit_location = None;
+                //             break;
+                //         }
+                //     } 
+                //     gamemap::units_to_sprites(&camera, &game_state.player1_units, sprites.get_sprites_mut(1));
+                //     game_state.game_mode = GameMode::WarGame(false, 2);   // Switch play to player 2
+                // }
 
                 
 
             } else if let GameMode::WarGame(_, 2) = game_state.game_mode {
-                // If player 2, search player2 units for matching multichoord
+                /* // If player 2, search player2 units for matching multichoord
                 // If a match, set it to the moving unit
                 let mut space_occupied = false;
                 
@@ -385,22 +401,32 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                             break;
                         }
                     }
-                }
-
-                // After looking through all units, no unit is there
-                if !space_occupied {
-                    for mut unit in &mut game_state.player2_units {
-                        if unit.location == from_location {
-                            // unit.location = clicked_coord;
-                            unit.move_unit(clicked_coord, &mut game_state.hexgrid);
-                            game_state.moving_unit_location = None;
-                            break;
-                        }
-                    }
+                } */
+                print!("222222222222222222222222222222222222222222222\n");
+                if let Some(index) = game_state.player2_units.iter().position(|unit| unit.location == from_location) {
+                    let copy = game_state.player2_units.clone();
+                    let unit = &mut game_state.player2_units[index];
+                    unit.move_unit(clicked_coord, game_state.player1_units.clone(), copy, &mut game_state.hexgrid);
+                    game_state.moving_unit_location = None;
                     gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
                     gamemap::units_to_healthbars(&camera, &game_state.player2_units, sprites.get_sprites_mut(4), 2);
                     game_state.game_mode = GameMode::WarGame(false, 1);   //Switch play to player 1
                 }
+
+                // // After looking through all units, no unit is there
+                // if !space_occupied {
+                //     let player2_units = game_state.player2_units.clone();
+                //     for mut unit in &mut game_state.player2_units {
+                //         if unit.location == from_location {
+                //             // unit.location = clicked_coord;
+                //             unit.move_unit(clicked_coord, game_state.player1_units.clone(), player2_units, &mut game_state.hexgrid);
+                //             game_state.moving_unit_location = None;
+                //             break;
+                //         }
+                //     }
+                //     gamemap::units_to_sprites(&camera, &game_state.player2_units, sprites.get_sprites_mut(2));
+                //     game_state.game_mode = GameMode::WarGame(false, 1);   //Switch play to player 1
+                // }
 
                 
             }
@@ -412,6 +438,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 // If a match, set it to the moving unit
                 for unit in &game_state.player1_units {
                     if unit.location == clicked_coord {
+                        print!("yesyesyesyesyesyesyesyesyesyesyesyesyesyesyes\n");
                         game_state.moving_unit_location = Some(unit.location);
                         break;
                     }
@@ -422,6 +449,7 @@ pub fn updateWarGame(gpu:&wgpuimpl::WGPU, input:&mut input::Input, camera:&mut g
                 // If a match, set it to the moving unit
                 for unit in &game_state.player2_units {
                     if unit.location == clicked_coord {
+                        print!("yesyesyesyesyesyesyesyesyesyesyesyesyesyesyes\n");
                         game_state.moving_unit_location = Some(unit.location);
                         break;
                     }

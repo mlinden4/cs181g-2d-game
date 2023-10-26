@@ -14,7 +14,7 @@ pub enum Terrain {
     Forest
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct TerrainModifier {
     pub terrain_type: Terrain,
     pub movement: usize,
