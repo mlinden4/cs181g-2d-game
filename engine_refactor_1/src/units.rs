@@ -249,28 +249,29 @@ impl Unit {
                     // You can add conditions here to filter valid neighbors based on movement costs
                     let mut dist: i32 = 1; 
                     // Make if statements for each tile's movement cost
-                    let tile = grid.get(MultiCoord::from(neighbor)).unwrap();
-                    
-                    // TODO, ONLY CALL THIS LINE IF ITS NOT A HELICOPTER
-                    if tile.terrain == Terrain::Coast { 
-                        dist = 999;
-                    }
-                    if tile.terrain == Terrain::Plain { 
-                        dist = 1;
-                    }
-                    if tile.terrain == Terrain::Mountain { 
-                        dist = 999;
-                    }
-                    // TODO: SPECIAL ONE FOR TANKS SO FORESTS ARE 2 COST FOR THEM
-                    if tile.terrain == Terrain::Forest { 
-                        dist = 1;
-                    }
-                    // Make if statement if there is opponents unit
-                    for unit in &enemy_units { 
-                        if unit.location == MultiCoord::from(neighbor) {
+                    if let Some(tile) = grid.get(MultiCoord::from(neighbor)) {
+                        // TODO, ONLY CALL THIS LINE IF ITS NOT A HELICOPTER
+                        if tile.terrain == Terrain::Coast { 
                             dist = 999;
                         }
+                        if tile.terrain == Terrain::Plain { 
+                            dist = 1;
+                        }
+                        if tile.terrain == Terrain::Mountain { 
+                            dist = 999;
+                        }
+                        // TODO: SPECIAL ONE FOR TANKS SO FORESTS ARE 2 COST FOR THEM
+                        if tile.terrain == Terrain::Forest { 
+                            dist = 1;
+                        }
+                        // Make if statement if there is opponents unit
+                        for unit in &enemy_units { 
+                            if unit.location == MultiCoord::from(neighbor) {
+                                dist = 999;
+                            }
+                        }
                     }
+                    
                     
                     let neighbor_distance: i32 = current_distance + dist;
 
