@@ -16,3 +16,4 @@ num = "0.4.1"
 bytemuck = { version = "1.14.0", features = ["derive"] }
 range = "1.0.0"
 chickenwire = "0.1.0"
+rand = "0.8"
