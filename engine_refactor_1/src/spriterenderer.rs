@@ -208,6 +208,10 @@ impl SpriteRenderer {
         self.groups.len() -1
     }
 
+    pub fn clear_sprite_groups(&mut self){
+        self.groups = Vec::default();
+    }
+
     pub fn set_sprite_group(&mut self, which:usize, new_sprites:Vec<GPUSprite>) {
         self.groups[which].sprites = new_sprites;
     }
